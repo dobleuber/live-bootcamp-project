@@ -87,11 +87,8 @@ jobs:
       run: |
         sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -o StrictHostKeyChecking=no compose.yml root@${{ vars.DROPLET_IP }}:~
         sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no nginx-conf root@${{ vars.DROPLET_IP }}:~
-        sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no certbot-etc root@${{ vars.DROPLET_IP }}:~
-        sshpass -v -p ${{ secrets.DROPLET_PASSWORD }} scp -r -o StrictHostKeyChecking=no letsencrypt root@${{ vars.DROPLET_IP }}:~
 
-
-    - name: Deploy
+    - name: Deploy and setup SSL
       uses: appleboy/ssh-action@master
       with:
         host: ${{ vars.DROPLET_IP }}
@@ -100,6 +97,24 @@ jobs:
         script: |
           cd ~
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
+          
+          # Create dirs if they don't exist
+          mkdir -p certbot-etc letsencrypt
+          
+          # Stop services
           docker compose down
+          
+          # Initialize certbot if certificates don't exist
+          if [ ! -d "/root/letsencrypt/live/dobleuber.lat" ]; then
+            docker compose run --rm certbot certonly --webroot -w /var/www/certbot --force-renewal --email dobleuber@gmail.com -d dobleuber.lat --agree-tos
+          fi
+          
+          # renew certificates
+          docker compose run --rm certbot renew
+          
+          # start services
           docker compose pull
           docker compose up -d
+          
+          # configure crontab to renew certificates
+          (crontab -l 2>/dev/null; echo "0 12 * * * /usr/bin/docker compose run --rm certbot renew --quiet && /usr/bin/docker compose exec nginx nginx -s reload") | crontab -
