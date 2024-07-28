@@ -1,8 +1,10 @@
-use auth_service::Application;
+use auth_service::{Application, AppState, UserStoreType};
 
 #[tokio::main]
 async fn main() {
-    let app = Application::build("0.0.0.0:8080")
+    let user_store = UserStoreType::default();
+    let app_state = AppState::new(user_store);
+    let app = Application::build(app_state, "0.0.0.0:8080")
         .await
         .expect("Failed to build app");
 
