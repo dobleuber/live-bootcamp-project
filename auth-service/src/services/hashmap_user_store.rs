@@ -9,9 +9,9 @@ pub enum UserStoreError {
     UnexpectedError,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct HashmapUserStore {
-    users: HashMap<String, User>,
+    pub users: HashMap<String, User>,
 }
 
 impl HashmapUserStore {
@@ -25,11 +25,11 @@ impl HashmapUserStore {
     }
 
     pub fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
-        self.users.get(email).ok_or_else(|| UserStoreError::UserNotFound)
+        self.users.get(email).ok_or(UserStoreError::UserNotFound)
     }
 
     pub fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
-        self.users.get(email).ok_or_else(|| UserStoreError::UserNotFound).and_then(|user| {
+        self.users.get(email).ok_or(UserStoreError::UserNotFound).and_then(|user| {
             if user.password == password {
                 Ok(())
             } else {
