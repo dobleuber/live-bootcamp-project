@@ -8,7 +8,7 @@ use axum::{
     Json, Router
 };
 
-use domain::AuthAPIError;
+use domain::{AuthAPIError, UserStore};
 use serde::{Deserialize, Serialize};
 
 use tower_http::services::ServeDir;
@@ -18,12 +18,10 @@ use tokio::sync::RwLock;
 pub mod routes;
 use routes::{login, logout, signup, verify_2fa, verify_token};
 
-mod services;
+pub mod services;
 mod domain;
 
-use crate::services::hashmap_user_store::HashmapUserStore;  
-
-pub type UserStoreType = Arc<RwLock<HashmapUserStore>>;
+pub type UserStoreType = Arc<RwLock<dyn UserStore + Send + Sync>>;
 
 #[derive(Clone)]
 pub struct AppState {

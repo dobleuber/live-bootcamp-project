@@ -19,11 +19,11 @@ pub async fn signup(State(state): State<AppState>, Json(request): Json<SignupReq
 
     let mut user_store = state.user_store.write().await;
 
-    if user_store.get_user(&user.email).is_ok() {
+    if user_store.get_user(&user.email).await.is_ok() {
         return Err(AuthAPIError::UserAlreadyExists);
     }
 
-    match user_store.add_user(user) {
+    match user_store.add_user(user).await {
         Ok(_) => {
             Ok((StatusCode::CREATED, Json(SignupResponse {
                 message: "User created successfully".to_string(),
