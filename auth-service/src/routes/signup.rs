@@ -7,19 +7,16 @@ pub async fn signup(State(state): State<AppState>, Json(request): Json<SignupReq
     let email = request.email;
     let password = request.password;
 
-    if email.is_empty() || !email.contains('@') || password.len() < 8 {
-        return Err(AuthAPIError::InvalidCredentials);
-    }
 
-    let user = User {
-        email,
-        password,
-        requires_2fa: request.requires_2fa,
+    let user = match User::new(&email, &password, request.requires_2fa)
+    {
+        Ok(user) => user,
+        Err(_) => return Err(AuthAPIError::InvalidCredentials),
     };
 
     let mut user_store = state.user_store.write().await;
 
-    if user_store.get_user(&user.email).await.is_ok() {
+    if user_store.get_user(user.email.as_ref()).await.is_ok() {
         return Err(AuthAPIError::UserAlreadyExists);
     }
 
