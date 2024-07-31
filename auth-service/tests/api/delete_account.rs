@@ -1,4 +1,4 @@
-use auth_service::{routes::SignupResponse, ErrorResponse};
+use auth_service::routes::SignupResponse;
 use crate::helpers::{get_random_email, TestApp}; 
 
 #[tokio::test]
