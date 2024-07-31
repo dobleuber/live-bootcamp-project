@@ -79,7 +79,18 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    // TODO: Implement helper functions for all other routes (signup, login, logout, verify-2fa, and verify-token)
+    pub async fn delete_account<Body>(&self, body: &Body) -> reqwest::Response
+    where Body: serde::Serialize
+    {
+        self.http_client
+            .post(&format!("{}/delete-account", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
+
+    
 }
 
 pub fn get_random_email() -> String {

@@ -16,7 +16,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub mod routes;
-use routes::{login, logout, signup, verify_2fa, verify_token};
+use routes::{login, logout, signup, verify_2fa, verify_token, delete_account};
 
 pub mod services;
 mod domain;
@@ -69,6 +69,7 @@ impl Application {
             .route("/verify-2fa", post(verify_2fa))
             .route("/logout", post(logout))
             .route("/verify-token", post(verify_token))
+            .route("/delete-account", post(delete_account))
             .with_state(app_state);
 
         let listener = tokio::net::TcpListener::bind(address).await?;

@@ -33,6 +33,12 @@ impl UserStore for HashmapUserStore {
             }
         })
     }
+
+    async fn delete_user(&mut self, email: &str) -> Result<(), UserStoreError> {
+        let email = Email::parse(email).map_err(|_| UserStoreError::InvalidCredentials)?;
+        self.users.remove(&email).ok_or(UserStoreError::UserNotFound)?;
+        Ok(())
+    }
 }
 
 impl HashmapUserStore {
@@ -100,5 +106,23 @@ mod tests {
         user_store.add_user(user.clone()).await.unwrap();
 
         assert_eq!(user_store.validate_user("test@test.com", "wrong_password").await, Err(UserStoreError::InvalidCredentials));
+    }
+
+    #[tokio::test]
+    async fn test_delete_user() {
+        let mut user_store = HashmapUserStore::default();
+        let user = User::new("test@test.com", "password", false).unwrap();
+        user_store.add_user(user.clone()).await.unwrap();
+
+        assert_eq!(user_store.delete_user("test@test.com").await, Ok(()));
+    }
+
+    #[tokio::test]
+    async fn test_delete_user_not_found() {
+        let mut user_store = HashmapUserStore::default();
+        assert_eq!(
+            user_store.delete_user("test@test.com").await,
+            Err(UserStoreError::UserNotFound)
+        );
     }
 }
