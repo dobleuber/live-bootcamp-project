@@ -1,11 +1,11 @@
-use validator::validate_email;
+use validator::ValidateEmail;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Email(String);
 
 impl Email {
     pub fn parse(input: &str) -> Result<Email, String> {
-        if validate_email(input) {
+        if input.validate_email() {
             Ok(Email(input.to_string()))
         } else {
             Err("Invalid email address".to_string())
@@ -16,8 +16,7 @@ impl Email {
 impl AsRef<str> for Email {
     fn as_ref(&self) -> &str {
         &self.0
-    }
-    
+    }     
 }
 
 #[cfg(test)]
