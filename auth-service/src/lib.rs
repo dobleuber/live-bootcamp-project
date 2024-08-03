@@ -19,7 +19,7 @@ pub mod routes;
 use routes::{login, logout, signup, verify_2fa, verify_token, delete_account};
 
 pub mod services;
-mod domain;
+pub mod domain;
 
 pub type UserStoreType = Arc<RwLock<dyn UserStore + Send + Sync>>;
 

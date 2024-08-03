@@ -1,6 +1,5 @@
-use std::{collections::HashMap, sync::Arc};
-use crate::{domain::{Email, User, UserStore, UserStoreError}, UserStoreType};
-use tokio::sync::RwLock;
+use std::collections::HashMap;
+use crate::domain::{Email, User, UserStore, UserStoreError};
 
 #[derive(Default, Debug)]
 pub struct HashmapUserStore {
@@ -38,12 +37,6 @@ impl UserStore for HashmapUserStore {
         let email = Email::parse(email).map_err(|_| UserStoreError::InvalidCredentials)?;
         self.users.remove(&email).ok_or(UserStoreError::UserNotFound)?;
         Ok(())
-    }
-}
-
-impl HashmapUserStore {
-    pub fn new_store() -> UserStoreType {
-        Arc::new(RwLock::new(Self::default()))
     }
 }
 

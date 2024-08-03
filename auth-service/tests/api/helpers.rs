@@ -1,4 +1,9 @@
-use auth_service::{Application, AppState, services::hashmap_user_store::HashmapUserStore};
+use auth_service::{
+    Application,
+    AppState,
+    services::hashmap_user_store::HashmapUserStore,
+    domain::UserStore
+};
 use reqwest::Client;
 use uuid::Uuid;
 
@@ -9,7 +14,7 @@ pub struct TestApp {
 
 impl TestApp {
     pub async fn new() -> Self {
-        let user_store = HashmapUserStore::new_store();
+        let user_store = HashmapUserStore::default().into_shared();
         let app_state = AppState::new(user_store);
         let app = Application::build(app_state, "127.0.0.1:0")
             .await
