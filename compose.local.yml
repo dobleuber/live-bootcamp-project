@@ -1,0 +1,31 @@
+services:
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-conf/nginx.local.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app-service
+      - auth-service
+
+  app-service:
+    image: dobleuber/app-service
+    build: ./app-service
+    restart: always
+    environment:
+      AUTH_SERVICE_IP: auth-service
+    expose:
+      - "8000"
+    depends_on:
+      auth-service:
+        condition: service_started
+
+  auth-service:
+    image: dobleuber/auth-service
+    build: ./auth-service
+    restart: always
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
+    expose:
+      - "8080"
