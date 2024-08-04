@@ -7,7 +7,6 @@ pub async fn signup(State(state): State<AppState>, Json(request): Json<SignupReq
     let email = request.email;
     let password = request.password;
 
-
     let user = match User::new(&email, &password, request.requires_2fa)
     {
         Ok(user) => user,

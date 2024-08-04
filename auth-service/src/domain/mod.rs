@@ -7,4 +7,5 @@ mod data_stores;
 pub use user::*;
 pub use email::*;
 pub use error::*;
+pub use password::*;
 pub use data_stores::*;
