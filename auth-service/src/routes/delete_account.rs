@@ -1,12 +1,36 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum_extra::extract::CookieJar;
 use serde::Deserialize;
 
-use crate::{AppState, domain::AuthAPIError};
+use crate::AppState;
+use crate::{
+    domain::AuthAPIError,
+    utils::{
+        auth::validate_token,
+        constants::JWT_COOKIE_NAME,
+    },
+};
 
-pub async fn delete_account(State(state): State<AppState>, Json(request): Json<DeleteAccountRequest>) -> Result<impl IntoResponse, AuthAPIError> {
-    let mut user_store = state.user_store.write().await;
-    user_store.delete_user(&request.email).await.map_err(|_| AuthAPIError::UnexpectedError)?;
-    Ok(StatusCode::OK)
+pub async fn delete_account(jar: CookieJar, State(state): State<AppState>) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
+    match jar.get(JWT_COOKIE_NAME) {
+        Some(cookie) => {
+            let token = cookie.value();
+            match validate_token(token).await {
+                Ok(claims) => {
+                    let email = claims.sub;
+                    let cookie_clone = cookie.clone().into_owned();
+                    let mut user_store = state.user_store.write().await;
+                    if user_store.delete_user(&email).await.is_ok() {
+                        (jar.remove(cookie_clone), Ok(StatusCode::OK.into_response()))
+                    } else {
+                        (jar, Err(AuthAPIError::UnexpectedError))
+                    }
+                },
+                Err(_) => (jar, Err(AuthAPIError::InvalidToken)),
+            }
+        }
+        None => (jar, Err(AuthAPIError::MissingToken)),
+    }
 }
 
 #[derive(Deserialize)]

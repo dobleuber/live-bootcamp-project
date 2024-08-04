@@ -96,12 +96,10 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
-    pub async fn delete_account<Body>(&self, body: &Body) -> reqwest::Response
-    where Body: serde::Serialize
+    pub async fn delete_account(&self) -> reqwest::Response
     {
         self.http_client
             .post(&format!("{}/delete-account", &self.address))
-            .json(body)
             .send()
             .await
             .expect("Failed to execute request.")

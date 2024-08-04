@@ -1,31 +1,81 @@
-use auth_service::routes::SignupResponse;
+use auth_service::utils::constants::JWT_COOKIE_NAME;
+use reqwest::Url;
+
 use crate::helpers::{get_random_email, TestApp}; 
 
 #[tokio::test]
-async fn should_delete_account() {
+async fn should_return_400_if_jwt_cookie_missing() {
+    let app = TestApp::new().await;
+
+    let response = app.post_logout().await;
+
+    assert_eq!(response.status().as_u16(), 400);
+}
+
+#[tokio::test]
+async fn should_return_401_if_invalid_token() {
+    let app = TestApp::new().await;
+
+    // add invalid cookie
+    app.cookie_jar.add_cookie_str(
+        &format!(
+            "{}=invalid; HttpOnly; SameSite=Lax; Secure; Path=/",
+            JWT_COOKIE_NAME
+        ),
+        &Url::parse("http://127.0.0.1").expect("Failed to parse URL"),
+    );
+
+    let response = app.delete_account().await;
+    assert_eq!(response.status().as_u16(), 401);
+}
+
+#[tokio::test]
+async fn should_return_200_if_valid_jwt_cookie() {
     let random_email = get_random_email();
-    let valid_test = serde_json::json!({
+    let password = "password123";
+    let new_user = serde_json::json!({
             "email": random_email,
-            "password": "password123",
-            "requires2FA": true
+            "password": password,
+            "requires2FA": false,
         });
+
+    let user_credentials = serde_json::json!({
+        "email": random_email,
+        "password": password,
+    });
 
     let app = TestApp::new().await;
 
-    let response = app.post_signup(&valid_test).await;
+    let _response = app.post_signup(&new_user).await;
+    let _response = app.post_login(&user_credentials).await;
 
-    assert_eq!(response.status().as_u16(), 201);
-    
-    let expected_response = SignupResponse {
-        message: "User created successfully".to_string(),
-    };
-    assert_eq!(response.json::<SignupResponse>().await.unwrap(), expected_response);
-
-    let valid_email = serde_json::json!({
-        "email": random_email,
-    });
-
-    let response = app.delete_account(&valid_email).await;
+    let response = app.delete_account().await;
 
     assert_eq!(response.status().as_u16(), 200);
+}
+
+#[tokio::test]
+async fn should_return_400_if_delete_account_called_twice_in_a_row() {
+    let random_email = get_random_email();
+    let password = "password123";
+    let new_user = serde_json::json!({
+            "email": random_email,
+            "password": password,
+            "requires2FA": false,
+        });
+
+    let user_credentials = serde_json::json!({
+        "email": random_email,
+        "password": password,
+    });
+
+    let app = TestApp::new().await;
+
+    let _response = app.post_signup(&new_user).await;
+    let _response = app.post_login(&user_credentials).await;
+
+    let _response = app.delete_account().await;
+    let response = app.delete_account().await;
+
+    assert_eq!(response.status().as_u16(), 400);
 }
