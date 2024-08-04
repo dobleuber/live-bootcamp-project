@@ -26,6 +26,8 @@ services:
   auth-service:
     image: dobleuber/auth-service
     restart: always
+    environment:
+      JWT_SECRET: ${JWT_SECRET}
     expose:
       - "8080"
 

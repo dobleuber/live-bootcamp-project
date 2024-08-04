@@ -1,31 +1,47 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum_extra::extract::CookieJar;
 use serde::{Deserialize, Serialize};
 
-use crate::{domain::{AuthAPIError, Email, Password}, AppState};
+use crate::{
+    domain::{
+        AuthAPIError,
+        Email,
+        Password
+    }, utils::auth::generate_auth_cookie, AppState
+};
 
-pub async fn login(State(state): State<AppState>, Json(request): Json<LoginRequest>) -> Result<impl IntoResponse, AuthAPIError> {   
+pub async fn login(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Json(request): Json<LoginRequest>
+) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {   
     let email = request.email;
     let password = request.password;
 
     let email = match Email::parse(&email) {
         Ok(email) => email,
-        Err(_) => return Err(AuthAPIError::InvalidCredentials),
+        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
     };
 
     let password = match Password::parse(&password) {
         Ok(password) => password,
-        Err(_) => return Err(AuthAPIError::InvalidCredentials),
+        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
     };
 
     let user_store = state.user_store.read().await;
 
     if user_store.validate_user(email.as_ref(), password.as_ref()).await.is_err() {
-        return Err(AuthAPIError::IncorrectCredentials);
+        return (jar, Err(AuthAPIError::IncorrectCredentials));
     }
 
-    Ok((StatusCode::OK, Json(LoginResponse {
-        message: "Login successful".to_string(),
-    })).into_response())
+    if let Ok(auth_cookie) = generate_auth_cookie(&email) {
+        let update_jar = jar.add(auth_cookie);
+        (update_jar,  Ok((StatusCode::OK, Json(LoginResponse {
+            message: "Login successful".to_string(),
+        })).into_response()))
+    } else {
+        (jar, Ok(StatusCode::OK.into_response()))
+    }
 }
 
 #[derive(Deserialize, Debug)]
