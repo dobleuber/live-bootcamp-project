@@ -1,14 +1,15 @@
-use axum::{response::IntoResponse, Json};
+use axum::{extract::State, response::IntoResponse, Json};
 use reqwest::StatusCode;
 use serde::Deserialize;
 
 use crate::utils::auth::validate_token;
-use crate::AuthAPIError;
+use crate::{AuthAPIError, AppState};
 
-pub async fn verify_token(Json(request): Json<VerifyTokenRequest>
+pub async fn verify_token(State(state): State<AppState>, Json(request): Json<VerifyTokenRequest>
 ) -> impl IntoResponse {
     let token = request.token;
-    match validate_token(&token).await {
+    let banned_token_store = state.banned_token_store.clone();
+    match validate_token(banned_token_store, &token).await {
         Ok(_) => StatusCode::OK.into_response(),
         Err(_) => AuthAPIError::InvalidToken.into_response(),
     }

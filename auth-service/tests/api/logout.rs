@@ -6,9 +6,7 @@ use crate::helpers::{TestApp, get_random_email};
 #[tokio::test]
 async fn should_return_400_if_jwt_cookie_missing() {
     let app = TestApp::new().await;
-
     let response = app.post_logout().await;
-
     assert_eq!(response.status().as_u16(), 400);
 }
 
@@ -47,11 +45,22 @@ async fn should_return_200_if_valid_jwt_cookie() {
     let app = TestApp::new().await;
 
     let _response = app.post_signup(&new_user).await;
-    let _response = app.post_login(&user_credentials).await;
+    let response = app.post_login(&user_credentials).await;
+
+    let token = response
+        .cookies()
+        .find(|cookie| cookie.name() == JWT_COOKIE_NAME)
+        .expect("Token not found")
+        .value()
+        .to_string();
 
     let response = app.post_logout().await;
 
     assert_eq!(response.status().as_u16(), 200);
+
+    let hashset_banned_token_store = app.banned_token_store.read().await;
+    assert!(hashset_banned_token_store.is_token_banned(&token).await);
+
 }
 
 #[tokio::test]

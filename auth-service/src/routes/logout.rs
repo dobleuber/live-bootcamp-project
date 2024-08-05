@@ -1,20 +1,28 @@
-use axum::{response::IntoResponse, http::StatusCode};
+use axum::{extract::State, response::IntoResponse, http::StatusCode};
 use axum_extra::extract::CookieJar;
 
 use crate::{
-    domain::AuthAPIError,
+    AuthAPIError,
     utils::{
         auth::validate_token,
         constants::JWT_COOKIE_NAME,
     },
+    AppState,
 };
 
-pub async fn logout(jar: CookieJar) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
+pub async fn logout(
+    State(state): State<AppState>,
+    jar: CookieJar,
+) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>)
+{
+    let banned_token_store = state.banned_token_store.clone();
     match jar.get(JWT_COOKIE_NAME) {
         Some(cookie) => {
             let token = cookie.value();
-            match validate_token(token).await {
+            match validate_token(banned_token_store, token).await {
                 Ok(_) => {
+                    let mut banned_token_store = state.banned_token_store.write().await;
+                    banned_token_store.store_token(token).await;
                     let cookie_clone = cookie.clone().into_owned();
                     (jar.remove(cookie_clone), Ok(StatusCode::OK.into_response()))
                 },

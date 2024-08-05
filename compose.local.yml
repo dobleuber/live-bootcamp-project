@@ -25,6 +25,8 @@ services:
     image: dobleuber/auth-service
     build: ./auth-service
     restart: always
+    env_file:
+      - ./.env
     environment:
       JWT_SECRET: ${JWT_SECRET}
     expose:

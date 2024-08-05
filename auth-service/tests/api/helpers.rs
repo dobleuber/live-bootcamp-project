@@ -3,8 +3,12 @@ use std::sync::Arc;
 use auth_service::{
     Application,
     AppState,
-    services::hashmap_user_store::HashmapUserStore,
-    domain::UserStore,
+    BannedTokenStoreType,
+    services::{
+        hashmap_user_store::HashmapUserStore,
+        hashset_banned_token_store::HashSetBannedTokenStore,
+    },
+    domain::IntoShared,
     utils::constants::test,
 };
 use uuid::Uuid;
@@ -14,12 +18,14 @@ pub struct TestApp {
     pub address: String,
     pub cookie_jar: Arc<Jar>,
     pub http_client: reqwest::Client,
+    pub banned_token_store: BannedTokenStoreType,
 }
 
 impl TestApp {
     pub async fn new() -> Self {
         let user_store = HashmapUserStore::default().into_shared();
-        let app_state = AppState::new(user_store);
+        let banned_token_store = HashSetBannedTokenStore::default().into_shared();
+        let app_state = AppState::new(user_store, banned_token_store.clone());
         let app = Application::build(app_state, test::APP_ADDRESS)
             .await
             .expect("Failed to build the app");
@@ -38,6 +44,7 @@ impl TestApp {
             address,
             cookie_jar,
             http_client,
+            banned_token_store,
         }
     }
 

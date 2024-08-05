@@ -8,7 +8,7 @@ use axum::{
     Json, Router
 };
 
-use domain::{AuthAPIError, UserStore};
+use domain::{AuthAPIError, UserStore, BannedTokenStore};
 use serde::{Deserialize, Serialize};
 
 use tower_http::{cors::CorsLayer, services::ServeDir};
@@ -23,15 +23,17 @@ pub mod domain;
 pub mod utils;
 
 pub type UserStoreType = Arc<RwLock<dyn UserStore + Send + Sync>>;
+pub type BannedTokenStoreType = Arc<RwLock<dyn BannedTokenStore + Send + Sync>>;
 
 #[derive(Clone)]
 pub struct AppState {
     pub user_store: UserStoreType,
+    pub banned_token_store: BannedTokenStoreType,
 }
 
 impl AppState {
-    pub fn new(user_store: UserStoreType) -> Self {
-        Self { user_store }
+    pub fn new(user_store: UserStoreType, banned_token_store: BannedTokenStoreType) -> Self {
+        Self { user_store, banned_token_store }
     }
 }
 
@@ -67,7 +69,7 @@ pub struct Application {
 impl Application {
     pub async fn build(app_state: AppState,address: &str) -> Result<Self, Box<dyn Error>> {
         let allowed_origins = [
-            "http://localhost:8000".parse()?,
+            "http://localhost".parse()?,
             "http://dobleuber.lat".parse()?,
         ];
 

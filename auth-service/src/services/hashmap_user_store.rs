@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::domain::{Email, User, UserStore, UserStoreError};
+use crate::domain::{Email, User, UserStore, UserStoreError, IntoShared};
 
 #[derive(Default, Debug)]
 pub struct HashmapUserStore {
@@ -39,6 +39,8 @@ impl UserStore for HashmapUserStore {
         Ok(())
     }
 }
+
+impl IntoShared for HashmapUserStore {}
 
 #[cfg(test)]
 mod tests {
