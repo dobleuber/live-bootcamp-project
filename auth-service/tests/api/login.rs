@@ -69,10 +69,10 @@ async fn should_return_400_if_invalid_input() {
 async fn should_return_401_if_incorrect_credentials() {
     let random_email = get_random_email();
     let valid_test = serde_json::json!({
-            "email": random_email,
-            "password": "password123",
-            "requires2FA": true,
-        });
+        "email": random_email,
+        "password": "password123",
+        "requires2FA": true,
+    });
 
     let app = TestApp::new().await;
 
