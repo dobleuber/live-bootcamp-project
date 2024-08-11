@@ -14,33 +14,33 @@ pub async fn login(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(request): Json<LoginRequest>
-) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {   
+) -> Result<(CookieJar, impl IntoResponse), AuthAPIError> {   
     let email = request.email;
     let password = request.password;
 
     let email = match Email::parse(&email) {
         Ok(email) => email,
-        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+        Err(_) => return Err(AuthAPIError::InvalidCredentials),
     };
 
     let password = match Password::parse(&password) {
         Ok(password) => password,
-        Err(_) => return (jar, Err(AuthAPIError::InvalidCredentials)),
+        Err(_) => return Err(AuthAPIError::InvalidCredentials),
     };
 
     let user_store = state.user_store.read().await;
 
     if user_store.validate_user(email.as_ref(), password.as_ref()).await.is_err() {
-        return (jar, Err(AuthAPIError::IncorrectCredentials));
+        return Err(AuthAPIError::IncorrectCredentials);
     }
 
     if let Ok(auth_cookie) = generate_auth_cookie(&email) {
         let update_jar = jar.add(auth_cookie);
-        (update_jar,  Ok((StatusCode::OK, Json(LoginResponse {
+        Ok((update_jar, (StatusCode::OK, Json(LoginResponse {
             message: "Login successful".to_string(),
         })).into_response()))
     } else {
-        (jar, Ok(StatusCode::OK.into_response()))
+        Ok((jar, StatusCode::OK.into_response()))
     }
 }
 

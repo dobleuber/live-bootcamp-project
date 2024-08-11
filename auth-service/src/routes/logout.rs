@@ -13,7 +13,7 @@ use crate::{
 pub async fn logout(
     State(state): State<AppState>,
     jar: CookieJar,
-) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>)
+) -> Result<(CookieJar, impl IntoResponse), AuthAPIError>
 {
     let banned_token_store = state.banned_token_store.clone();
     match jar.get(JWT_COOKIE_NAME) {
@@ -24,12 +24,12 @@ pub async fn logout(
                     let mut banned_token_store = state.banned_token_store.write().await;
                     banned_token_store.store_token(token).await;
                     let cookie_clone = cookie.clone().into_owned();
-                    (jar.remove(cookie_clone), Ok(StatusCode::OK.into_response()))
+                    Ok((jar.remove(cookie_clone), StatusCode::OK.into_response()))
                 },
-                Err(_) => (jar, Err(AuthAPIError::InvalidToken)),
+                Err(_) => Err(AuthAPIError::InvalidToken),
             }
         }
-        None => (jar, Err(AuthAPIError::MissingToken)),
+        None => Err(AuthAPIError::MissingToken),
     }
 }
 

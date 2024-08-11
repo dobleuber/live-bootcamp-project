@@ -11,7 +11,7 @@ use crate::{
     },
 };
 
-pub async fn delete_account(jar: CookieJar, State(state): State<AppState>) -> (CookieJar, Result<impl IntoResponse, AuthAPIError>) {
+pub async fn delete_account(jar: CookieJar, State(state): State<AppState>) -> Result<(CookieJar, impl IntoResponse), AuthAPIError> {
     let banned_token_store = state.banned_token_store.clone();
     match jar.get(JWT_COOKIE_NAME) {
         Some(cookie) => {
@@ -22,15 +22,15 @@ pub async fn delete_account(jar: CookieJar, State(state): State<AppState>) -> (C
                     let cookie_clone = cookie.clone().into_owned();
                     let mut user_store = state.user_store.write().await;
                     if user_store.delete_user(&email).await.is_ok() {
-                        (jar.remove(cookie_clone), Ok(StatusCode::OK.into_response()))
+                        Ok((jar.remove(cookie_clone), StatusCode::OK.into_response()))
                     } else {
-                        (jar, Err(AuthAPIError::UnexpectedError))
+                        Err(AuthAPIError::UnexpectedError)
                     }
                 },
-                Err(_) => (jar, Err(AuthAPIError::InvalidToken)),
+                Err(_) => Err(AuthAPIError::InvalidToken),
             }
         }
-        None => (jar, Err(AuthAPIError::MissingToken)),
+        None => Err(AuthAPIError::MissingToken),
     }
 }
 
