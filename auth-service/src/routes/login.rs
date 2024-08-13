@@ -6,7 +6,9 @@ use crate::{
     domain::{
         AuthAPIError,
         Email,
-        Password
+        Password,
+        TwoFACode,
+        LoginAttemptId,
     }, utils::auth::generate_auth_cookie, AppState
 };
 
@@ -38,18 +40,32 @@ pub async fn login(
         .map_err(|_| AuthAPIError::IncorrectCredentials)?;
 
     match user.requires_2fa {
-        true => handle_2fa(jar).await,
+        true => handle_2fa(&user.email, &state, jar).await,
         false => handle_no_2fa(jar, email).await,
     }
 }
 
-async fn handle_2fa(jar: cookie::CookieJar) -> Result<(CookieJar, (StatusCode, Json<LoginResponse>)), AuthAPIError> {
+async fn handle_2fa(
+    email: &Email,
+    state: &AppState,
+    jar: cookie::CookieJar
+) -> Result<(CookieJar, (StatusCode, Json<LoginResponse>)), AuthAPIError> {
+    let login_attempt_id = LoginAttemptId::default();
+    let two_fa_code = TwoFACode::default();
+
+    state.two_fa_code_store
+        .write()
+        .await
+        .add_code(email.clone(), &login_attempt_id, two_fa_code.clone())
+        .await
+        .map_err(|_| AuthAPIError::UnexpectedError)?;
+
     Ok((
         jar,
         (StatusCode::PARTIAL_CONTENT,
         Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
             message: "2FA required".to_string(),
-            login_attempt_id: "123456".to_string(),
+            login_attempt_id: login_attempt_id.as_ref().to_owned(),
         }))
     )))
 }

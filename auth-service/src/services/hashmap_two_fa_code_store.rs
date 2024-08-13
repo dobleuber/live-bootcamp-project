@@ -6,15 +6,16 @@ use crate::domain::{
     TwoFACodeStore,
     TwoFACodeStoreError,
     Email,
+    IntoShared,
 };
 
 #[derive(Default)]
-pub struct HashMapTwoFACodeStore {
+pub struct HashmapTwoFACodeStore {
     codes: HashMap<Email, (LoginAttemptId, TwoFACode)>,
 }
 
 #[async_trait::async_trait]
-impl TwoFACodeStore for HashMapTwoFACodeStore {
+impl TwoFACodeStore for HashmapTwoFACodeStore {
     async fn add_code(
         &mut self,
         email: Email,
@@ -51,13 +52,15 @@ impl TwoFACodeStore for HashMapTwoFACodeStore {
     
 }
 
+impl IntoShared for HashmapTwoFACodeStore {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[tokio::test]
     async fn should_add_a_code() {
-        let mut store = HashMapTwoFACodeStore::default();
+        let mut store = HashmapTwoFACodeStore::default();
         let email = Email::parse("hi@test.com").unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
@@ -66,7 +69,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_fail_if_email_exists_already() {
-        let mut store = HashMapTwoFACodeStore::default();
+        let mut store = HashmapTwoFACodeStore::default();
         let email = Email::parse("hi@test.com").unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
@@ -77,7 +80,7 @@ mod tests {
 
     #[tokio::test]
     async fn should_remove_a_code() {
-        let mut store = HashMapTwoFACodeStore::default();
+        let mut store = HashmapTwoFACodeStore::default();
         let email = Email::parse("hi@test.com").unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
@@ -88,14 +91,14 @@ mod tests {
 
     #[tokio::test]
     async fn should_fail_if_email_does_not_exist() {
-        let mut store = HashMapTwoFACodeStore::default();
+        let mut store = HashmapTwoFACodeStore::default();
         let email = Email::parse("hi@test.com").unwrap();
         assert_eq!(store.remove_code(email).await, Err(TwoFACodeStoreError::UnexpectedError));
     }
 
     #[tokio::test]
     async fn should_get_a_code() {
-        let mut store = HashMapTwoFACodeStore::default();
+        let mut store = HashmapTwoFACodeStore::default();
         let email = Email::parse("hi@test.com").unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
