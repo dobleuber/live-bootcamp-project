@@ -1,14 +1,13 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::{cookie, CookieJar};
 use serde::{Deserialize, Serialize};
-
 use crate::{
     domain::{
         AuthAPIError,
         Email,
+        LoginAttemptId,
         Password,
         TwoFACode,
-        LoginAttemptId,
     }, utils::auth::generate_auth_cookie, AppState
 };
 
@@ -57,6 +56,14 @@ async fn handle_2fa(
         .write()
         .await
         .add_code(email.clone(), &login_attempt_id, two_fa_code.clone())
+        .await
+        .map_err(|_| AuthAPIError::UnexpectedError)?;
+
+    let content = format!("Your 2FA code is: {}", two_fa_code.as_ref());
+
+    let email_client = state.email_client.read().await;
+    email_client
+        .send_email(email, "2FA code", &content)
         .await
         .map_err(|_| AuthAPIError::UnexpectedError)?;
 

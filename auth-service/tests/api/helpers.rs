@@ -1,17 +1,9 @@
 use std::sync::Arc;
 
 use auth_service::{
-    Application,
-    AppState,
-    BannedTokenStoreType,
-    TwoFACodeStoreType,
-    services::{
-        hashmap_user_store::HashmapUserStore,
-        hashset_banned_token_store::HashSetBannedTokenStore,
-        hashmap_two_fa_code_store::HashmapTwoFACodeStore,
-    },
-    domain::IntoShared,
-    utils::constants::test,
+    domain::IntoShared, services::{
+        hashmap_two_fa_code_store::HashmapTwoFACodeStore, hashmap_user_store::HashmapUserStore, hashset_banned_token_store::HashSetBannedTokenStore, mock_email_client::{self, MockEmailClient}
+    }, utils::constants::test, AppState, Application, BannedTokenStoreType, TwoFACodeStoreType
 };
 use uuid::Uuid;
 use reqwest::cookie::Jar;
@@ -29,7 +21,8 @@ impl TestApp {
         let user_store = HashmapUserStore::default().into_shared();
         let banned_token_store = HashSetBannedTokenStore::default().into_shared();
         let two_fa_code_store = HashmapTwoFACodeStore::default().into_shared();
-        let app_state = AppState::new(user_store, banned_token_store.clone(), two_fa_code_store.clone());
+        let mock_email_client = MockEmailClient.into_shared();
+        let app_state = AppState::new(user_store, banned_token_store.clone(), two_fa_code_store.clone(), mock_email_client);
         let app = Application::build(app_state, test::APP_ADDRESS)
             .await
             .expect("Failed to build the app");
