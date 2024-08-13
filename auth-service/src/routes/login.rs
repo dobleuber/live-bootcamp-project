@@ -1,5 +1,5 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use axum_extra::extract::CookieJar;
+use axum_extra::extract::{cookie, CookieJar};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -34,13 +34,32 @@ pub async fn login(
         return Err(AuthAPIError::IncorrectCredentials);
     }
 
+    let user = user_store.get_user(email.as_ref()).await
+        .map_err(|_| AuthAPIError::IncorrectCredentials)?;
+
+    match user.requires_2fa {
+        true => handle_2fa(jar).await,
+        false => handle_no_2fa(jar, email).await,
+    }
+}
+
+async fn handle_2fa(jar: cookie::CookieJar) -> Result<(CookieJar, (StatusCode, Json<LoginResponse>)), AuthAPIError> {
+    Ok((
+        jar,
+        (StatusCode::PARTIAL_CONTENT,
+        Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
+            message: "2FA required".to_string(),
+            login_attempt_id: "123456".to_string(),
+        }))
+    )))
+}
+
+async fn handle_no_2fa(jar: cookie::CookieJar, email: Email) -> Result<(CookieJar, (StatusCode, Json<LoginResponse>)), AuthAPIError> {
     if let Ok(auth_cookie) = generate_auth_cookie(&email) {
         let update_jar = jar.add(auth_cookie);
-        Ok((update_jar, (StatusCode::OK, Json(LoginResponse {
-            message: "Login successful".to_string(),
-        })).into_response()))
+        Ok((update_jar, (StatusCode::OK, Json(LoginResponse::RegularAuth))))
     } else {
-        Ok((jar, StatusCode::OK.into_response()))
+        Ok((jar, (StatusCode::OK, Json(LoginResponse::RegularAuth))))
     }
 }
 
@@ -51,6 +70,14 @@ pub struct LoginRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-pub struct LoginResponse {
+pub enum LoginResponse {
+    RegularAuth,
+    TwoFactorAuth(TwoFactorAuthResponse),
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+pub struct TwoFactorAuthResponse {
     pub message: String,
+    #[serde(rename = "loginAttemptId")]
+    pub login_attempt_id: String,
 }
