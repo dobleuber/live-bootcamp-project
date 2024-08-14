@@ -1,6 +1,65 @@
-use axum::response::IntoResponse;
-use reqwest::StatusCode;
+use axum::{
+    extract::State,
+    http::StatusCode,
+    Json,
+    response::IntoResponse,
+};
+use axum_extra::extract::CookieJar;
+use serde::Deserialize;
 
-pub async fn verify_2fa() -> impl IntoResponse {
-    StatusCode::OK.into_response()
+use crate::{
+    AppState,
+    domain::{
+        AuthAPIError,
+        Email,
+        LoginAttemptId,
+        TwoFACode
+    },
+    utils::auth::generate_auth_cookie,
+};
+
+pub async fn verify_2fa(
+    State(state): State<AppState>,
+    jar: CookieJar,
+    Json(request): Json<Verify2FARequest>,
+) -> Result<(CookieJar, impl IntoResponse), AuthAPIError> {
+    let email = Email::parse(&request.email)
+        .map_err(|_| AuthAPIError::InvalidCredentials)?;
+
+    let login_attempt_id = LoginAttemptId::parse(&request.login_attempt_id)
+        .map_err(|_| AuthAPIError::InvalidCredentials)?;
+
+    let two_fa_code = TwoFACode::parse(&request.two_fa_code)
+        .map_err(|_| AuthAPIError::InvalidCredentials)?;
+
+    let mut two_fa_code_store = state.two_fa_code_store.write().await;
+    
+    let code_tuple = two_fa_code_store.get_code(email.clone()).await
+        .map_err(|_| AuthAPIError::IncorrectCredentials)?;
+
+    if login_attempt_id !=  code_tuple.0 {
+        return Err(AuthAPIError::IncorrectCredentials);
+    }
+
+    if two_fa_code != code_tuple.1 {
+        return Err(AuthAPIError::IncorrectCredentials);
+    }
+
+    let _ = two_fa_code_store.remove_code(email.clone()).await;
+
+    if let Ok(auth_cookie) = generate_auth_cookie(&email) {
+        let update_jar = jar.add(auth_cookie);
+        Ok((update_jar, StatusCode::OK))
+    } else {
+        Ok((jar, StatusCode::OK))
+    }
+}
+
+#[derive(Deserialize)]
+pub struct Verify2FARequest {
+    pub email: String,
+    #[serde(rename = "loginAttemptId")]
+    pub login_attempt_id: String,
+    #[serde(rename = "2FACode")]
+    pub two_fa_code: String,
 }

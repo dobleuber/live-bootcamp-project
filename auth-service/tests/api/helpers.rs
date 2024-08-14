@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use auth_service::{
     domain::IntoShared, services::{
-        hashmap_two_fa_code_store::HashmapTwoFACodeStore, hashmap_user_store::HashmapUserStore, hashset_banned_token_store::HashSetBannedTokenStore, mock_email_client::{self, MockEmailClient}
+        hashmap_two_fa_code_store::HashmapTwoFACodeStore,
+        hashmap_user_store::HashmapUserStore,
+        hashset_banned_token_store::HashSetBannedTokenStore,
+        mock_email_client::MockEmailClient,
     }, utils::constants::test, AppState, Application, BannedTokenStoreType, TwoFACodeStoreType
 };
 use uuid::Uuid;
@@ -112,7 +115,19 @@ impl TestApp {
             .send()
             .await
             .expect("Failed to execute request.")
-    }    
+    }
+
+    pub async fn post_verify_2fa<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
+        self.http_client
+            .post(&format!("{}/verify-2fa", &self.address))
+            .json(body)
+            .send()
+            .await
+            .expect("Failed to execute request.")
+    }
 }
 
 pub fn get_random_email() -> String {

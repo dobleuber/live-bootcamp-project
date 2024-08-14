@@ -22,9 +22,6 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
         login_attempt_id: &LoginAttemptId,
         code: TwoFACode,
     ) -> Result<(), TwoFACodeStoreError> {
-        if self.codes.contains_key(&email) {
-            return Err(TwoFACodeStoreError::UnexpectedError);
-        }
         self.codes.insert(email, (login_attempt_id.clone(), code.clone()));
         Ok(())
     }
@@ -49,7 +46,6 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
             None => Err(TwoFACodeStoreError::LoginAttemptIdNotFound),
         }
     }
-    
 }
 
 impl IntoShared for HashmapTwoFACodeStore {}
@@ -68,14 +64,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn should_fail_if_email_exists_already() {
+    async fn should_update_if_email_exists_already() {
         let mut store = HashmapTwoFACodeStore::default();
         let email = Email::parse("hi@test.com").unwrap();
         let login_attempt_id = LoginAttemptId::default();
         let code = TwoFACode::default();
         store.add_code(email.clone(), &login_attempt_id, code.clone()).await.unwrap();
+        let login_attempt_id = LoginAttemptId::default();
+        let code = TwoFACode::default();
         
-        assert_eq!(store.add_code(email.clone(), &login_attempt_id, code.clone()).await, Err(TwoFACodeStoreError::UnexpectedError));
+        assert_eq!(store.add_code(email.clone(), &login_attempt_id, code.clone()).await, Ok(()));
     }
 
     #[tokio::test]

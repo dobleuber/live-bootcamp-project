@@ -52,7 +52,7 @@ loginButton.addEventListener("click", (e) => {
         if (response.status === 206) {
             TwoFAForm.email.value = email;
             response.json().then(data => {
-                TwoFAForm.login_attempt_id.value = data.loginAttemptId;
+                TwoFAForm.login_attempt_id.value = data.TwoFactorAuth.loginAttemptId;
             });
 
             loginForm.email.value = "";
