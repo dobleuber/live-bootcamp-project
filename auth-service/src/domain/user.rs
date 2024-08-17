@@ -1,6 +1,8 @@
 use super::email::Email;
 use super::password::Password;
 
+use crate::utils::parsable::Parsable;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct User {
     pub email: Email,

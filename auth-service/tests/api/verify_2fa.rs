@@ -1,6 +1,9 @@
 use auth_service::{
     domain::{Email, LoginAttemptId},
-    utils::constants::JWT_COOKIE_NAME,
+    utils::{
+        constants::JWT_COOKIE_NAME,
+        parsable::Parsable,
+    },
 };
 use crate::helpers::{get_random_email, TestApp};
 

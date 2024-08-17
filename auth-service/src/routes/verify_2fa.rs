@@ -15,7 +15,7 @@ use crate::{
         LoginAttemptId,
         TwoFACode
     },
-    utils::auth::generate_auth_cookie,
+    utils::{auth::generate_auth_cookie, parsable::Parsable},
 };
 
 pub async fn verify_2fa(
@@ -23,14 +23,11 @@ pub async fn verify_2fa(
     jar: CookieJar,
     Json(request): Json<Verify2FARequest>,
 ) -> Result<(CookieJar, impl IntoResponse), AuthAPIError> {
-    let email = Email::parse(&request.email)
-        .map_err(|_| AuthAPIError::InvalidCredentials)?;
+    let email = Email::parse_or_error(&request.email, AuthAPIError::InvalidCredentials)?;
 
-    let login_attempt_id = LoginAttemptId::parse(&request.login_attempt_id)
-        .map_err(|_| AuthAPIError::InvalidCredentials)?;
+    let login_attempt_id = LoginAttemptId::parse_or_error(&request.login_attempt_id, AuthAPIError::InvalidCredentials)?;
 
-    let two_fa_code = TwoFACode::parse(&request.two_fa_code)
-        .map_err(|_| AuthAPIError::InvalidCredentials)?;
+    let two_fa_code = TwoFACode::parse_or_error(&request.two_fa_code, AuthAPIError::InvalidCredentials)?;
 
     let mut two_fa_code_store = state.two_fa_code_store.write().await;
     

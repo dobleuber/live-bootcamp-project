@@ -1,10 +1,12 @@
 use validator::ValidateEmail;
+use crate::utils::parsable::Parsable;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Email(String);
 
-impl Email {
-    pub fn parse(input: &str) -> Result<Email, String> {
+impl Parsable for Email {
+    type Error = String;
+    fn parse(input: &str) -> Result<Email, String> {
         if input.validate_email() {
             Ok(Email(input.to_string()))
         } else {

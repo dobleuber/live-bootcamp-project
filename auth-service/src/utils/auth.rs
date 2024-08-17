@@ -83,6 +83,7 @@ mod tests {
     use crate::{
         services::hashset_banned_token_store::HashSetBannedTokenStore,
         domain::{IntoShared, BannedTokenStore},
+        utils::parsable::Parsable,
     };
 
     #[tokio::test]

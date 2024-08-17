@@ -4,6 +4,8 @@ use super::{user::User, Email};
 use uuid::Uuid;
 use rand;
 
+use crate::utils::parsable::Parsable;
+
 #[derive(Debug, PartialEq)]
 pub enum UserStoreError {
     UserAlreadyExists,
@@ -64,8 +66,9 @@ pub struct LoginAttemptId(String);
 #[derive(Clone, Debug, PartialEq)]
 pub struct TwoFACode(String);
 
-impl LoginAttemptId {
-    pub fn parse(id: &str) -> Result<Self, String> {
+impl Parsable for LoginAttemptId {
+    type Error = String;
+    fn parse(id: &str) -> Result<Self, String> {
         Uuid::parse_str(id)
             .map(|_| LoginAttemptId(id.to_string()))
             .map_err(|_| "Invalid UUID".to_string())
@@ -84,8 +87,9 @@ impl AsRef<str> for LoginAttemptId {
     }
 }
 
-impl TwoFACode {
-    pub fn parse(code: &str) -> Result<Self, String> {
+impl Parsable for TwoFACode {
+    type Error = String;
+    fn parse(code: &str) -> Result<Self, String> {
         if code.len() != 6 {
             return Err("Invalid code length".to_string());
         }

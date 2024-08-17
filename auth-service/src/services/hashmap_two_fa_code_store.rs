@@ -1,12 +1,14 @@
 use std::collections::HashMap;
 
-use crate::domain::{
-    LoginAttemptId,
-    TwoFACode,
-    TwoFACodeStore,
-    TwoFACodeStoreError,
-    Email,
-    IntoShared,
+use crate::{
+    domain::{
+        LoginAttemptId,
+        TwoFACode,
+        TwoFACodeStore,
+        TwoFACodeStoreError,
+        Email,
+        IntoShared,
+    },
 };
 
 #[derive(Default)]
@@ -53,6 +55,7 @@ impl IntoShared for HashmapTwoFACodeStore {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::parsable::Parsable;
 
     #[tokio::test]
     async fn should_add_a_code() {

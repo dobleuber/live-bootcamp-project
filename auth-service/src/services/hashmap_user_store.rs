@@ -1,5 +1,10 @@
 use std::collections::HashMap;
-use crate::domain::{Email, User, UserStore, UserStoreError, IntoShared};
+use crate::{
+    domain::{
+        Email, User, UserStore, UserStoreError, IntoShared
+    },
+    utils::parsable::Parsable,
+};
 
 #[derive(Default, Debug)]
 pub struct HashmapUserStore {
@@ -18,12 +23,12 @@ impl UserStore for HashmapUserStore {
     }
 
     async fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
-        let email = Email::parse(email).map_err(|_| UserStoreError::InvalidCredentials)?;
+        let email = Email::parse_or_error(email, UserStoreError::InvalidCredentials)?;
         self.users.get(&email).ok_or(UserStoreError::UserNotFound)
     }
 
     async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
-        let email = Email::parse(email).map_err(|_| UserStoreError::InvalidCredentials)?;
+        let email = Email::parse_or_error(email, UserStoreError::InvalidCredentials)?;
         self.users.get(&email).ok_or(UserStoreError::UserNotFound).and_then(|user| {
             if user.password.as_ref() == password {
                 Ok(())

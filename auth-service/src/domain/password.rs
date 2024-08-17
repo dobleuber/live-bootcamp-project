@@ -1,8 +1,11 @@
+use crate::utils::parsable::Parsable;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Password(String);
 
-impl Password {
-    pub fn parse(input: &str) -> Result<Self, String> {
+impl Parsable for Password {
+    type Error = String;
+    fn parse(input: &str) -> Result<Self, String> {
         if input.len() < 8 {
             return Err("Invalid password".to_string());
         }
