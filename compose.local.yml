@@ -29,5 +29,22 @@ services:
       - ./.env
     environment:
       JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: "mysql://root:${DATABASE_PASSWORD}@db:3306/bootcamp"
     expose:
       - "8080"
+    depends_on:
+      - db
+  db:
+    image: mysql:9
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: bootcamp
+    ports:
+      - "3306:3306"
+    volumes:
+      - db:/var/lib/mysql
+
+volumes:
+  db:
+    driver: local

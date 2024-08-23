@@ -7,9 +7,10 @@ use axum::{
     serve::Serve,
     Json, Router
 };
+use serde::{Deserialize, Serialize};
+use sqlx::{MySqlPool, mysql::MySqlPoolOptions};
 
 use domain::{AuthAPIError, BannedTokenStore, EmailClient, TwoFACodeStore, UserStore};
-use serde::{Deserialize, Serialize};
 
 use tower_http::{cors::CorsLayer, services::ServeDir};
 use std::sync::Arc;
@@ -68,6 +69,13 @@ impl IntoResponse for AuthAPIError {
 
         (status, body).into_response()
     }
+}
+
+pub async fn get_mysql_pool(url: &str) -> Result<MySqlPool, sqlx::Error> {
+    MySqlPoolOptions::new()
+        .max_connections(5)
+        .connect(url)
+        .await
 }
 
 pub struct Application {

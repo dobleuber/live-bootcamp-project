@@ -3,22 +3,25 @@ use lazy_static::lazy_static;
 use std::env as std_env;
 
 lazy_static! {
-    pub static ref JWT_SECRET: String = set_token();
+    pub static ref JWT_SECRET: String = init_env_var(env::JWT_SECRET_ENV_VAR, "JWT_SECRET");
+    pub static ref DATABASE_URL: String = init_env_var(env::DATABASE_URL_ENV_VAR, "DATABASE_URL");
 }
 
-fn set_token() -> String {
+fn init_env_var(var_name: &str, env_label: &str) -> String {
     dotenv().ok();
-    let secret = std_env::var(env::JWT_SECRET_ENV_VAR).expect("JWT_SECRET must be set.");
+    let value = std_env::var(var_name).unwrap_or_else(|_| panic!("{} must be set.", env_label));
 
-    if secret.is_empty() {
-        panic!("JWT_SECRET must not be empty");
+    if value.is_empty() {
+        panic!("{} must not be empty", env_label);
     }
 
-    secret
+    value
 }
+
 
 pub mod env {
     pub const JWT_SECRET_ENV_VAR: &str = "JWT_SECRET";
+    pub const DATABASE_URL_ENV_VAR: &str = "DATABASE_URL";
 }
 
 pub const JWT_COOKIE_NAME: &str = "jwt";

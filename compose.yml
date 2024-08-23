@@ -28,8 +28,11 @@ services:
     restart: always
     environment:
       JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: "mysql://root:${DATABASE_PASSWORD}@db:3306/bootcamp"
     expose:
       - "8080"
+    depends_on:
+      - db
 
   certbot:
     image: certbot/certbot
@@ -37,3 +40,18 @@ services:
       - ./letsencrypt:/etc/letsencrypt
       - ./certbot-etc:/var/www/certbot
     command: certonly --webroot -w /var/www/certbot --force-renewal --email dobleuber@gmail.com -d dobleuber.lat --agree-tos
+  
+  db:
+    image: mysql:9
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MYSQL_DATABASE: bootcamp
+    ports:
+      - "3306:3306"
+    volumes:
+      - db:/var/lib/mysql
+
+volumes:
+  db:
+    driver: local
