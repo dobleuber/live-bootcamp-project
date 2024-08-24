@@ -9,7 +9,7 @@ use crate::helpers::{get_random_email, TestApp};
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let email = get_random_email();
     let login_attempt_id = LoginAttemptId::default();
 
@@ -37,11 +37,13 @@ async fn should_return_422_if_malformed_input() {
             test_case
         );
     }
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
 async fn should_return_400_if_invalid_input() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let email = get_random_email();
     let login_attempt_id = LoginAttemptId::default();
 
@@ -72,11 +74,13 @@ async fn should_return_400_if_invalid_input() {
             test_case
         );
     }
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
 async fn should_return_401_if_incorrect_credentials() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let email = get_random_email();
     let login_attempt_id = LoginAttemptId::default();
 
@@ -97,6 +101,8 @@ async fn should_return_401_if_incorrect_credentials() {
             test_case
         );
     }
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -108,7 +114,7 @@ async fn should_return_401_if_old_2fa_code() {
         "requires2FA": true,
     });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&valid_test).await;
 
@@ -135,6 +141,8 @@ async fn should_return_401_if_old_2fa_code() {
     })).await;
 
     assert_eq!(response.status().as_u16(), 401);
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -146,7 +154,7 @@ async fn should_return_200_if_valid_credentials_and_valid_2fa_code() {
             "requires2FA": true,
         });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&valid_test).await;
 
@@ -181,6 +189,7 @@ async fn should_return_200_if_valid_credentials_and_valid_2fa_code() {
 
     assert!(!auth_cookie.value().is_empty());
 
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -192,7 +201,7 @@ async fn should_return_401_if_same_code_twice() {
             "requires2FA": true,
         });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&valid_test).await;
 
@@ -225,4 +234,6 @@ async fn should_return_401_if_same_code_twice() {
         })).await;
 
     assert_eq!(response.status().as_u16(), 401);
+
+    app.clean_up().await;
 }

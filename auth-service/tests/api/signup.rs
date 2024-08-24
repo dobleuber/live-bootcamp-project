@@ -3,7 +3,7 @@ use crate::helpers::{get_random_email, TestApp};
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let random_email = get_random_email();
 
@@ -31,6 +31,8 @@ async fn should_return_422_if_malformed_input() {
             test_case
         );
     }
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -42,7 +44,7 @@ async fn should_return_201_if_valid_input() {
             "requires2FA": true
         });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let response = app.post_signup(&valid_test).await;
 
@@ -52,6 +54,8 @@ async fn should_return_201_if_valid_input() {
         message: "User created successfully".to_string(),
     };
     assert_eq!(response.json::<SignupResponse>().await.unwrap(), expected_response);
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -75,7 +79,7 @@ async fn should_return_400_if_invalid_input() {
     ];
 
     for test_case in test_cases {
-        let app = TestApp::new().await;
+        let mut app = TestApp::new().await;
         let response = app.post_signup(&test_case).await;
         assert_eq!(
             response.status().as_u16(),
@@ -92,6 +96,8 @@ async fn should_return_400_if_invalid_input() {
                 .error,
             "Invalid credentials".to_string()
         );
+
+        app.clean_up().await;
     }
 
 }
@@ -105,7 +111,7 @@ async fn should_return_409_if_email_already_exists() {
             "requires2FA": true,
         });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&valid_test).await;
 
@@ -121,4 +127,6 @@ async fn should_return_409_if_email_already_exists() {
             .error,
         "User already exists".to_string()
     );
+
+    app.clean_up().await;
 }

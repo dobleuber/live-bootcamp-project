@@ -11,7 +11,7 @@ use auth_service::{
 
 #[tokio::test]
 async fn should_return_422_if_malformed_credentials() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let email = get_random_email();
 
     let test_cases = [
@@ -32,6 +32,8 @@ async fn should_return_422_if_malformed_credentials() {
             test_case
         );
     }
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -52,7 +54,7 @@ async fn should_return_400_if_invalid_input() {
     ];
 
     for test_case in test_cases {
-        let app = TestApp::new().await;
+        let mut app = TestApp::new().await;
         let response = app.post_login(&test_case).await;
         assert_eq!(
             response.status().as_u16(),
@@ -69,6 +71,8 @@ async fn should_return_400_if_invalid_input() {
                 .error,
             "Invalid credentials".to_string()
         );
+
+        app.clean_up().await;
     }
 
 }
@@ -82,7 +86,7 @@ async fn should_return_401_if_incorrect_credentials() {
         "requires2FA": true,
     });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&valid_test).await;
 
@@ -103,6 +107,8 @@ async fn should_return_401_if_incorrect_credentials() {
             .error,
         "Incorrect credentials".to_string()
     );
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -114,7 +120,7 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
             "requires2FA": false,
         });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&valid_test).await;
 
@@ -141,6 +147,8 @@ async fn should_return_200_if_valid_credentials_and_2fa_disabled() {
             .expect("Could not deserialize response body to serde_json::Value"),
             "RegularAuth"
     );
+
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -152,7 +160,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
         "requires2FA": true,
     });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&valid_test).await;
 
@@ -187,7 +195,5 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
         })
     );
 
-
-
-
+    app.clean_up().await;
 }

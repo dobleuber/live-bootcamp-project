@@ -3,12 +3,13 @@ use auth_service::utils::constants::JWT_COOKIE_NAME;
 
 #[tokio::test]
 async fn should_return_422_if_malformed_input() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let invalid_body = serde_json::json!({});
 
     let response = app.post_verify_token(&invalid_body).await;
 
     assert_eq!(response.status().as_u16(), 422);
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -26,7 +27,7 @@ async fn should_return_200_valid_token() {
         "password": password,
     });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&new_user).await;
     let response = app.post_login(&user_credentials).await;
@@ -39,13 +40,15 @@ async fn should_return_200_valid_token() {
     let token = auth_cookie.value();
     let response = app.post_verify_token(&serde_json::json!({ "token": token })).await;
     assert_eq!(response.status().as_u16(), 200);
+    app.clean_up().await;
 }
 
 #[tokio::test]
 async fn should_return_401_if_invalid_token() {
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
     let response = app.post_verify_token(&serde_json::json!({ "token": "invalid-token".to_owned() })).await;
     assert_eq!(response.status().as_u16(), 401);
+    app.clean_up().await;
 }
 
 #[tokio::test]
@@ -63,7 +66,7 @@ async fn should_return_401_if_banned_token() {
         "password": password,
     });
 
-    let app = TestApp::new().await;
+    let mut app = TestApp::new().await;
 
     let _response = app.post_signup(&new_user).await;
     let response = app.post_login(&user_credentials).await;
@@ -81,4 +84,6 @@ async fn should_return_401_if_banned_token() {
     let response = app.post_verify_token(&serde_json::json!({ "token": token })).await;
     
     assert_eq!(response.status().as_u16(), 401);
+
+    app.clean_up().await;
 }
