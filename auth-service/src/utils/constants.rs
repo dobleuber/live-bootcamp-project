@@ -5,6 +5,7 @@ use std::env as std_env;
 lazy_static! {
     pub static ref JWT_SECRET: String = init_env_var(env::JWT_SECRET_ENV_VAR, "JWT_SECRET");
     pub static ref DATABASE_URL: String = init_env_var(env::DATABASE_URL_ENV_VAR, "DATABASE_URL");
+    pub static ref DATABASE_NAME: String = init_env_var(env::DATABASE_NAME_ENV_VAR, "DATABASE_NAME");
 }
 
 fn init_env_var(var_name: &str, env_label: &str) -> String {
@@ -22,6 +23,7 @@ fn init_env_var(var_name: &str, env_label: &str) -> String {
 pub mod env {
     pub const JWT_SECRET_ENV_VAR: &str = "JWT_SECRET";
     pub const DATABASE_URL_ENV_VAR: &str = "DATABASE_URL";
+    pub const DATABASE_NAME_ENV_VAR: &str = "DATABASE_NAME";
 }
 
 pub const JWT_COOKIE_NAME: &str = "jwt";
