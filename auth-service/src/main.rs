@@ -1,9 +1,9 @@
 use sqlx::mysql::MySqlPool;
 
 use auth_service::{
-    domain::IntoShared, services::{
+    domain::IntoShared, services::data_stores::{
         hashmap_two_fa_code_store::HashmapTwoFACodeStore,
-        hashmap_user_store::HashmapUserStore,
+        my_sql_user_store::MySqlUserStore,
         hashset_banned_token_store::HashSetBannedTokenStore,
         mock_email_client::MockEmailClient,
     }, utils::constants::{prod, DATABASE_URL}, AppState, Application, get_mysql_pool,
@@ -11,8 +11,8 @@ use auth_service::{
 
 #[tokio::main]
 async fn main() {
-    let _pg_pool = configure_database().await;
-    let user_store = HashmapUserStore::default().into_shared();
+    let pg_pool = configure_database().await;
+    let user_store = MySqlUserStore::new(pg_pool).into_shared();
     let banned_token_store = HashSetBannedTokenStore::default().into_shared();
     let hashmap_two_fa_code_store = HashmapTwoFACodeStore::default().into_shared();
     let mock_email_client = MockEmailClient.into_shared();

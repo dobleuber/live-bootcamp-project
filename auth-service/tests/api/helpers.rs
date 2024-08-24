@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use auth_service::{
-    domain::IntoShared, services::{
+    domain::IntoShared, services::data_stores::{
         hashmap_two_fa_code_store::HashmapTwoFACodeStore,
         hashmap_user_store::HashmapUserStore,
         hashset_banned_token_store::HashSetBannedTokenStore,

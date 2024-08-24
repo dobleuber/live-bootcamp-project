@@ -22,9 +22,9 @@ impl UserStore for HashmapUserStore {
         Ok(())
     }
 
-    async fn get_user(&self, email: &str) -> Result<&User, UserStoreError> {
+    async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
         let email = Email::parse_or_error(email, UserStoreError::InvalidCredentials)?;
-        self.users.get(&email).ok_or(UserStoreError::UserNotFound)
+        self.users.get(&email).ok_or(UserStoreError::UserNotFound).cloned()
     }
 
     async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
@@ -74,7 +74,7 @@ mod tests {
         let user = User::new("test@test.com", "password", false).unwrap();
         user_store.add_user(user.clone()).await.unwrap();
 
-        assert_eq!(user_store.get_user("test@test.com").await, Ok(&user));
+        assert_eq!(user_store.get_user("test@test.com").await, Ok(user));
     }
 
     #[tokio::test]

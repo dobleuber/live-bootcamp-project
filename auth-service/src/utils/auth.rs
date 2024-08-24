@@ -81,7 +81,7 @@ pub struct Claims {
 mod tests {
     use super::*;
     use crate::{
-        services::hashset_banned_token_store::HashSetBannedTokenStore,
+        services::data_stores::hashset_banned_token_store::HashSetBannedTokenStore,
         domain::{IntoShared, BannedTokenStore},
         utils::parsable::Parsable,
     };

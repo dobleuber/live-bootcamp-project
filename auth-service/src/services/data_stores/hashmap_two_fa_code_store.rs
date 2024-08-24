@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 
-use crate::{
-    domain::{
-        LoginAttemptId,
-        TwoFACode,
-        TwoFACodeStore,
-        TwoFACodeStoreError,
-        Email,
-        IntoShared,
-    },
+use crate::domain::{
+    LoginAttemptId,
+    TwoFACode,
+    TwoFACodeStore,
+    TwoFACodeStoreError,
+    Email,
+    IntoShared,
 };
 
 #[derive(Default)]
