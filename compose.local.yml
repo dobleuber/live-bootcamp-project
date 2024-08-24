@@ -29,7 +29,8 @@ services:
       - ./.env
     environment:
       JWT_SECRET: ${JWT_SECRET}
-      DATABASE_URL: "mysql://root:${DATABASE_PASSWORD}@db:3306/bootcamp"
+      DATABASE_URL: "mysql://root:${DATABASE_PASSWORD}@db:3306"
+      DATABASE_NAME: bootcamp
     expose:
       - "8080"
     depends_on:

@@ -58,7 +58,8 @@ jobs:
       working-directory: ./auth-service
       run: |
         export JWT_SECRET=secret
-        export DATABASE_URL=mysql://root:{{secrets.DATABASE_PASSWORD}}@localhost:3306/bootcamp
+        export DATABASE_URL=mysql://root:{{secrets.DATABASE_PASSWORD}}@localhost:3306
+        export DATABASE_NAME=bootcamp
         cargo build --verbose
         cargo test --verbose
 
