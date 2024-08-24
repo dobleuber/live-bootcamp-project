@@ -6,9 +6,24 @@ on:
     branches:
       - main
 
+env:
+  SQLX_OFFLINE: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        # Docker Hub image
+        image: mysql:9
+        # Environment variables scoped only for the `postgres` element
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          MYSQL_DATABASE: bootcamp
+        # Opens tcp port 3306 on the host and service container
+        ports:
+          - 3306:3306
 
     steps:
       # Checkout code from the repository
@@ -43,6 +58,7 @@ jobs:
       working-directory: ./auth-service
       run: |
         export JWT_SECRET=secret
+        export DATABASE_URL=mysql://root:{{secrets.DATABASE_PASSWORD}}@localhost:3306/bootcamp
         cargo build --verbose
         cargo test --verbose
 
@@ -99,6 +115,7 @@ jobs:
           cd ~
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
+          export DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
           
           # Create dirs if they don't exist
           mkdir -p certbot-etc letsencrypt
