@@ -8,7 +8,7 @@ use std::{str::FromStr, sync::Arc};
 use auth_service::{
     domain::IntoShared,
     get_mysql_pool,
-    get_redis_client,
+    configure_redis,
     services::data_stores::{
         hashmap_two_fa_code_store::HashmapTwoFACodeStore,
         redis_banned_token_store::RedisBannedTokenStore,
@@ -34,7 +34,7 @@ pub struct TestApp {
 impl TestApp {
     pub async fn new() -> Self {
         let (db_pool, db_name) = configure_my_sql().await;
-        let redis_conn = Arc::new(RwLock::new(configure_redis()));
+        let redis_conn = Arc::new(RwLock::new(configure_redis(DEFAULT_REDIS_HOSTNAME.to_string())));
         let user_store = MySqlUserStore::new(db_pool).into_shared();
         let banned_token_store = RedisBannedTokenStore::new(redis_conn.clone()).into_shared();
         let two_fa_code_store = HashmapTwoFACodeStore::default().into_shared();
@@ -252,11 +252,4 @@ WHERE
         .execute(format!("DROP DATABASE `{}`;", db_name).as_str())
         .await
         .expect("Failed to drop the database");
-}
-
-fn configure_redis() -> redis::Connection {
-    get_redis_client(DEFAULT_REDIS_HOSTNAME.to_owned())
-        .expect("Failed to get Redis client")
-        .get_connection()
-        .expect("Failed to get Redis connection")
 }

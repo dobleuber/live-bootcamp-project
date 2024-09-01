@@ -51,31 +51,24 @@ fn get_key(token: &str) -> String {
 mod tests {
     use super::*;
     use crate::{
-        get_redis_client,
+        configure_redis,
         utils::constants::DEFAULT_REDIS_HOSTNAME,
     };
 
     #[tokio::test]
     async fn test_store_token() {
-        let conn = configure_redis();
+        let conn = configure_redis(DEFAULT_REDIS_HOSTNAME.to_string());
+        let conn = Arc::new(RwLock::new(conn));
         let mut banned_token_store = RedisBannedTokenStore::new(conn);    
         assert!(banned_token_store.store_token("token").await);
     }
 
     #[tokio::test]
     async fn test_is_token_banned() {
-        let conn = configure_redis();
+        let conn = configure_redis(DEFAULT_REDIS_HOSTNAME.to_string());
+        let conn = Arc::new(RwLock::new(conn));
         let mut banned_token_store = RedisBannedTokenStore::new(conn);
         banned_token_store.store_token("token").await;
         assert!(banned_token_store.is_token_banned("token").await);
-    }
-
-    fn configure_redis() -> Arc<RwLock<Connection>> {
-        let conn = get_redis_client(DEFAULT_REDIS_HOSTNAME.to_owned())
-            .expect("Failed to get Redis client")
-            .get_connection()
-            .expect("Failed to get Redis connection");
-
-        Arc::new(RwLock::new(conn))
     }
 }
