@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the location of the .env file (change if needed)
-ENV_FILE="./auth-service/.env"
+ENV_FILE="./.env"
 
 # Check if the .env file exists
 if ! [[ -f "$ENV_FILE" ]]; then
@@ -22,5 +22,5 @@ while IFS= read -r line; do
 done < <(grep -v '^#' "$ENV_FILE")
 
 # Run docker-compose commands with exported variables
-docker compose build
-docker compose up
+docker compose -f compose.local.yml build
+docker compose -f compose.local.yml up

@@ -15,6 +15,7 @@ use domain::{AuthAPIError, BannedTokenStore, EmailClient, TwoFACodeStore, UserSt
 use tower_http::{cors::CorsLayer, services::ServeDir};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use redis::{RedisResult, Client};
 
 pub mod routes;
 use routes::{login, logout, signup, verify_2fa, verify_token, delete_account};
@@ -117,4 +118,9 @@ impl Application {
         println!("listening on {}", &self.address);
         self.server.await
     }
+}
+
+pub fn get_redis_client(redis_hostname: String) -> RedisResult<Client> {
+    let redis_url = format!("redis://{}/", redis_hostname);
+    redis::Client::open(redis_url)
 }

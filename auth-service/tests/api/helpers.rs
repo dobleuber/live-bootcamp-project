@@ -2,17 +2,20 @@ use sqlx::{
     mysql::{MySqlConnectOptions, MySqlConnection, MySqlPool, MySqlPoolOptions},
     Connection, Executor,
 };
+use tokio::sync::RwLock;
 use std::{str::FromStr, sync::Arc};
 
 use auth_service::{
     domain::IntoShared,
     get_mysql_pool,
+    get_redis_client,
     services::data_stores::{
         hashmap_two_fa_code_store::HashmapTwoFACodeStore,
-        hashset_banned_token_store::HashSetBannedTokenStore, mock_email_client::MockEmailClient,
+        redis_banned_token_store::RedisBannedTokenStore,
+        mock_email_client::MockEmailClient,
         my_sql_user_store::MySqlUserStore,
     },
-    utils::constants::{test, DATABASE_URL},
+    utils::constants::{test, DATABASE_URL, DEFAULT_REDIS_HOSTNAME},
     AppState, Application, BannedTokenStoreType, TwoFACodeStoreType,
 };
 use reqwest::cookie::Jar;
@@ -31,8 +34,9 @@ pub struct TestApp {
 impl TestApp {
     pub async fn new() -> Self {
         let (db_pool, db_name) = configure_my_sql().await;
+        let redis_conn = Arc::new(RwLock::new(configure_redis()));
         let user_store = MySqlUserStore::new(db_pool).into_shared();
-        let banned_token_store = HashSetBannedTokenStore::default().into_shared();
+        let banned_token_store = RedisBannedTokenStore::new(redis_conn.clone()).into_shared();
         let two_fa_code_store = HashmapTwoFACodeStore::default().into_shared();
         let mock_email_client = MockEmailClient.into_shared();
         let app_state = AppState::new(
@@ -248,4 +252,11 @@ WHERE
         .execute(format!("DROP DATABASE `{}`;", db_name).as_str())
         .await
         .expect("Failed to drop the database");
+}
+
+fn configure_redis() -> redis::Connection {
+    get_redis_client(DEFAULT_REDIS_HOSTNAME.to_owned())
+        .expect("Failed to get Redis client")
+        .get_connection()
+        .expect("Failed to get Redis connection")
 }
