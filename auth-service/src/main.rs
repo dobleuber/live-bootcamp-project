@@ -8,7 +8,7 @@ use auth_service::{
     domain::IntoShared,
     get_mysql_pool,
     services::data_stores::{
-        hashmap_two_fa_code_store::HashmapTwoFACodeStore, mock_email_client::MockEmailClient,
+        redis_two_fa_code_store::RedisTwoFACodeStore, mock_email_client::MockEmailClient,
         my_sql_user_store::MySqlUserStore, redis_banned_token_store::RedisBannedTokenStore,
     },
     utils::constants::{prod, DATABASE_NAME, DATABASE_URL, REDIS_HOST_NAME},
@@ -21,7 +21,7 @@ async fn main() {
     let redis_client = Arc::new(RwLock::new(configure_redis(REDIS_HOST_NAME.to_string())));
     let user_store = MySqlUserStore::new(db_pool).into_shared();
     let banned_token_store = RedisBannedTokenStore::new(redis_client.clone()).into_shared();
-    let hashmap_two_fa_code_store = HashmapTwoFACodeStore::default().into_shared();
+    let hashmap_two_fa_code_store = RedisTwoFACodeStore::new(redis_client.clone()).into_shared();
     let mock_email_client = MockEmailClient.into_shared();
     let app_state = AppState::new(
         user_store,

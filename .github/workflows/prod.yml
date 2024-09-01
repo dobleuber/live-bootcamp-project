@@ -24,6 +24,10 @@ jobs:
         # Opens tcp port 3306 on the host and service container
         ports:
           - 3306:3306
+      redis:
+        image: redis:7.0-alpine
+        ports:
+          - 6379:6379
 
     steps:
       # Checkout code from the repository
