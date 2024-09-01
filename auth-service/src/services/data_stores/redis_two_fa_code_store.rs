@@ -65,7 +65,6 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
         email: Email,
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError> {
         let key = get_key(&email);
-        println!("key: {}", &key);
         let serialized_tuple: String = self
             .conn
             .write()

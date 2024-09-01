@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{domain::{AuthAPIError, User}, AppState};
 
+#[tracing::instrument(name = "Signup", skip_all, err(Debug))]
 pub async fn signup(State(state): State<AppState>, Json(request): Json<SignupRequest>) -> Result<impl IntoResponse, AuthAPIError> {
     let email = request.email;
     let password = request.password;

@@ -8,15 +8,18 @@ use auth_service::{
     domain::IntoShared,
     get_mysql_pool,
     services::data_stores::{
-        redis_two_fa_code_store::RedisTwoFACodeStore, mock_email_client::MockEmailClient,
-        my_sql_user_store::MySqlUserStore, redis_banned_token_store::RedisBannedTokenStore,
+        mock_email_client::MockEmailClient, my_sql_user_store::MySqlUserStore, redis_banned_token_store::RedisBannedTokenStore, redis_two_fa_code_store::RedisTwoFACodeStore
     },
-    utils::constants::{prod, DATABASE_NAME, DATABASE_URL, REDIS_HOST_NAME},
+    utils::{
+        constants::{prod, DATABASE_NAME, DATABASE_URL, REDIS_HOST_NAME},
+        tracing::init_tracing,
+    },
     AppState, Application,
 };
 
 #[tokio::main]
 async fn main() {
+    init_tracing();
     let db_pool = configure_database().await;
     let redis_client = Arc::new(RwLock::new(configure_redis(REDIS_HOST_NAME.to_string())));
     let user_store = MySqlUserStore::new(db_pool).into_shared();
@@ -38,7 +41,7 @@ async fn main() {
 
 async fn configure_database() -> MySqlPool {
     let connection_string = format!("{}/{}", DATABASE_URL.as_str(), DATABASE_NAME.as_str());
-    println!("Connection string: {}", &connection_string);
+    tracing::info!("Connection string: {}", &connection_string);
     let db_pool = get_mysql_pool(&connection_string)
         .await
         .expect("Failed to connect to MySQL");

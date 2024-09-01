@@ -34,6 +34,7 @@ impl MySqlUserStore {
 
 #[async_trait::async_trait]
 impl UserStore for MySqlUserStore {
+    #[tracing::instrument(name="Adding user to Database", skip_all)]
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>{
         let password_hash = compute_password_hash(user.password.as_ref())
             .map_err(|_| UserStoreError::UnexpectedError)?;
@@ -45,13 +46,14 @@ impl UserStore for MySqlUserStore {
             .execute(&self.pool)
             .await
             .map_err(|err| {
-                println!("{:#?}", err);
+                tracing::error!("{:#?}", err);
                 UserStoreError::UnexpectedError
             })?;
 
         Ok(())
     }
 
+    #[tracing::instrument(name="Retrieving user from Database", skip_all)]
     async fn get_user(&self, email: &str) -> Result<User, UserStoreError> {
         sqlx::query!("select email, password_hash, requires_2fa from users where email = ?", email)
             .fetch_optional(&self.pool)
@@ -67,9 +69,10 @@ impl UserStore for MySqlUserStore {
                 } else {
                     Err(UserStoreError::UnexpectedError)
                 }
-            }).unwrap()
+            }).map_err(|_| UserStoreError::UnexpectedError)?
     }
 
+    #[tracing::instrument(name="Validating user credentials in Database", skip_all)]
     async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await;
         let is_valid_password = verify_password_hash(user?.password.as_ref(), password);
@@ -77,6 +80,7 @@ impl UserStore for MySqlUserStore {
         is_valid_password.map_err(|_| UserStoreError::InvalidCredentials)
     }
      
+    #[tracing::instrument(name="Deleting user from Database", skip_all)]
     async fn delete_user(&mut self, email: &str) -> Result<(), UserStoreError> {
         sqlx::query("DELETE FROM users where email = ?")
             .bind(email)
@@ -90,6 +94,7 @@ impl UserStore for MySqlUserStore {
 
 impl IntoShared for MySqlUserStore {}
 
+#[tracing::instrument(name="Verify password hash", skip_all)]
 fn verify_password_hash(
     expected_password_hash: &str,
     password_candidate: &str,
@@ -101,6 +106,7 @@ fn verify_password_hash(
         .map_err(|e| e.into())
 }
 
+#[tracing::instrument(name="Computing password hash", skip_all)]
 fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error>> {
     let salt: SaltString = SaltString::generate(&mut rand::thread_rng());
 

@@ -12,13 +12,14 @@ use sqlx::{MySqlPool, mysql::MySqlPoolOptions};
 
 use domain::{AuthAPIError, BannedTokenStore, EmailClient, TwoFACodeStore, UserStore};
 
-use tower_http::{cors::CorsLayer, services::ServeDir};
+use tower_http::{cors::CorsLayer, services::ServeDir, trace::TraceLayer};
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use redis::{RedisResult, Client};
 
 pub mod routes;
 use routes::{login, logout, signup, verify_2fa, verify_token, delete_account};
+use utils::tracing::{make_span_with_request_id, on_request, on_response};
 
 pub mod services;
 pub mod domain;
@@ -105,7 +106,13 @@ impl Application {
             .route("/verify-token", post(verify_token))
             .route("/delete-account", post(delete_account))
             .with_state(app_state)
-            .layer(cors);
+            .layer(cors)
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(make_span_with_request_id)
+                    .on_request(on_request)
+                    .on_response(on_response)
+            );
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
@@ -115,7 +122,7 @@ impl Application {
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
-        println!("listening on {}", &self.address);
+        tracing::info!("listening on {}", &self.address);
         self.server.await
     }
 }
@@ -126,6 +133,7 @@ fn get_redis_client(redis_hostname: String) -> RedisResult<Client> {
 }
 
 pub fn configure_redis(redis_hostname: String) -> redis::Connection {
+    tracing::info!("redis hostname: {}", redis_hostname);
     get_redis_client(redis_hostname)
         .expect("Failed to get Redis client")
         .get_connection()
