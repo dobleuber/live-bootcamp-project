@@ -1,4 +1,4 @@
-use std::error::Error;
+use color_eyre::eyre::{eyre, Result};
 
 use argon2::{
     password_hash::SaltString,
@@ -36,8 +36,9 @@ impl MySqlUserStore {
 impl UserStore for MySqlUserStore {
     #[tracing::instrument(name="Adding user to Database", skip_all)]
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>{
-        let password_hash = compute_password_hash(user.password.as_ref())
-            .map_err(|_| UserStoreError::UnexpectedError)?;
+        let password_hash = compute_password_hash(user.password.as_ref().to_string())
+            .await
+            .map_err(UserStoreError::UnexpectedError)?;
 
         sqlx::query("Insert INTO users (email, password_hash, requires_2fa) VALUES (?, ?, ?)")
             .bind(user.email.as_ref())
@@ -47,7 +48,7 @@ impl UserStore for MySqlUserStore {
             .await
             .map_err(|err| {
                 tracing::error!("{:#?}", err);
-                UserStoreError::UnexpectedError
+                UserStoreError::UnexpectedError(err.into())
             })?;
 
         Ok(())
@@ -58,24 +59,23 @@ impl UserStore for MySqlUserStore {
         sqlx::query!("select email, password_hash, requires_2fa from users where email = ?", email)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|_| UserStoreError::UnexpectedError)
+            .map_err(|e| UserStoreError::UnexpectedError(e.into()))?
             .map(|row| {
-                if let Some(row) = row {
-                    Ok(User {
-                        email: Email::parse_or_error(&row.email, UserStoreError::UnexpectedError)?,
-                        password: Password::parse_or_error(&row.password_hash, UserStoreError::UnexpectedError)?,
-                        requires_2fa: row.requires_2fa == 1,
-                    })
-                } else {
-                    Err(UserStoreError::UnexpectedError)
-                }
-            }).map_err(|_| UserStoreError::UnexpectedError)?
+                Ok(User {
+                    email: Email::parse_or_error(&row.email, |e| UserStoreError::UnexpectedError(eyre!(e)))?,
+                    password: Password::parse_or_error(&row.password_hash, |e| UserStoreError::UnexpectedError(eyre!(e)))?,
+                    requires_2fa: row.requires_2fa == 1,
+                })
+            }).ok_or(UserStoreError::UserNotFound)?
     }
 
     #[tracing::instrument(name="Validating user credentials in Database", skip_all)]
     async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await;
-        let is_valid_password = verify_password_hash(user?.password.as_ref(), password);
+        let is_valid_password = verify_password_hash(
+            user?.password.as_ref().to_string(),
+            password.to_string()
+        ).await;
 
         is_valid_password.map_err(|_| UserStoreError::InvalidCredentials)
     }
@@ -86,7 +86,7 @@ impl UserStore for MySqlUserStore {
             .bind(email)
             .execute(&self.pool)
             .await
-            .map_err(|_| UserStoreError::UnexpectedError)?;
+            .map_err(|e| UserStoreError::UnexpectedError(e.into()))?;
 
         Ok(())
     }
@@ -95,28 +95,42 @@ impl UserStore for MySqlUserStore {
 impl IntoShared for MySqlUserStore {}
 
 #[tracing::instrument(name="Verify password hash", skip_all)]
-fn verify_password_hash(
-    expected_password_hash: &str,
-    password_candidate: &str,
-) -> Result<(), Box<dyn Error>> {
-    let expected_password_hash: PasswordHash<'_> = PasswordHash::new(expected_password_hash)?;
+async fn verify_password_hash(
+    expected_password_hash: String,
+    password_candidate: String,
+) -> Result<()> {
+    let current_span: tracing::Span = tracing::Span::current();
+    let result = tokio::task::spawn_blocking(move || {
+        current_span.in_scope(|| {
+            let expected_password_hash: PasswordHash<'_> = PasswordHash::new(&expected_password_hash)?;
 
-    Argon2::default()
-        .verify_password(password_candidate.as_bytes(), &expected_password_hash)
-        .map_err(|e| e.into())
+            Argon2::default()
+                .verify_password(password_candidate.as_bytes(), &expected_password_hash)
+                .map_err(|e| e.into())
+        })
+    }).await;
+
+    result?
 }
 
 #[tracing::instrument(name="Computing password hash", skip_all)]
-fn compute_password_hash(password: &str) -> Result<String, Box<dyn Error>> {
-    let salt: SaltString = SaltString::generate(&mut rand::thread_rng());
+async fn compute_password_hash(password: String) -> Result<String> {
+    let current_span: tracing::Span = tracing::Span::current();
 
-    let password_hash = Argon2::new(
-        Algorithm::Argon2id,
-        Version::V0x13,
-        Params::new(15000, 2, 1, None)?,
-    )
-    .hash_password(password.as_bytes(), &salt)?
-    .to_string();
+    let result = tokio::task::spawn_blocking(move || {
+        current_span.in_scope(|| {
+            let salt: SaltString = SaltString::generate(&mut rand::thread_rng());
+            let password_hash = Argon2::new(
+                Algorithm::Argon2id,
+                Version::V0x13,
+                Params::new(15000, 2, 1, None)?,
+            )
+            .hash_password(password.as_bytes(), &salt)?
+            .to_string();
+        
+            Ok(password_hash)
+        })
+    }).await;
 
-    Ok(password_hash)
+    result?
 }

@@ -19,7 +19,8 @@ use auth_service::{
 
 #[tokio::main]
 async fn main() {
-    init_tracing();
+    color_eyre::install().expect("Failed to install color_eyre");
+    init_tracing().expect("Failed to initialize tracing");
     let db_pool = configure_database().await;
     let redis_client = Arc::new(RwLock::new(configure_redis(REDIS_HOST_NAME.to_string())));
     let user_store = MySqlUserStore::new(db_pool).into_shared();

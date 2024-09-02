@@ -3,15 +3,21 @@ use std::sync::Arc;
 use super::{user::User, Email};
 use uuid::Uuid;
 use rand;
+use color_eyre::eyre::Report;
+use thiserror::Error;
 
 use crate::utils::parsable::Parsable;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, Error)]
 pub enum UserStoreError {
+    #[error("User already exists")]
     UserAlreadyExists,
+    #[error("User not found")]
     UserNotFound,
+    #[error("Invalid credentials")]
     InvalidCredentials,
-    UnexpectedError,
+    #[error("Unexpected error")]
+    UnexpectedError(#[source] Report),
 }
 
 #[async_trait::async_trait]
@@ -52,6 +58,18 @@ pub trait TwoFACodeStore {
         &self,
         email: Email,
     ) -> Result<(LoginAttemptId, TwoFACode), TwoFACodeStoreError>;
+}
+
+impl PartialEq for UserStoreError {
+    fn eq(&self, other: &Self) -> bool {
+        matches!(
+            (self, other),
+            (Self::UserAlreadyExists, Self::UserAlreadyExists)
+                | (Self::UserNotFound, Self::UserNotFound)
+                | (Self::InvalidCredentials, Self::InvalidCredentials)
+                | (Self::UnexpectedError(_), Self::UnexpectedError(_))
+        )
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
