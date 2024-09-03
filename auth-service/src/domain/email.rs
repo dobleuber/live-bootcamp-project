@@ -1,3 +1,4 @@
+use color_eyre::eyre::{eyre, Result};
 use validator::ValidateEmail;
 use crate::utils::parsable::Parsable;
 
@@ -5,12 +6,11 @@ use crate::utils::parsable::Parsable;
 pub struct Email(String);
 
 impl Parsable for Email {
-    type Error = String;
-    fn parse(input: &str) -> Result<Email, String> {
+    fn parse(input: &str) -> Result<Email> {
         if input.validate_email() {
             Ok(Email(input.to_string()))
         } else {
-            Err("Invalid email address".to_string())
+            Err(eyre!("Invalid email address"))
         }
     }
 }
@@ -32,7 +32,9 @@ mod tests {
 
     #[test]
     fn test_parse_invalid_email() {
-        assert_eq!(Email::parse("hey.com"), Err("Invalid email address".to_string()));
+        let invalid_password = Email::parse("hey.com");
+        assert!(invalid_password.is_err());
+        assert_eq!(invalid_password.unwrap_err().to_string(), "Invalid email address");
     }
 
     #[test]

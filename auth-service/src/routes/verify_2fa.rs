@@ -6,6 +6,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use serde::Deserialize;
+use color_eyre::eyre::Result;
 
 use crate::{
     AppState,
@@ -18,16 +19,17 @@ use crate::{
     utils::{auth::generate_auth_cookie, parsable::Parsable},
 };
 
+#[tracing::instrument(name = "verify 2FA", skip_all)]
 pub async fn verify_2fa(
     State(state): State<AppState>,
     jar: CookieJar,
     Json(request): Json<Verify2FARequest>,
 ) -> Result<(CookieJar, impl IntoResponse), AuthAPIError> {
-    let email = Email::parse_or_error(&request.email, AuthAPIError::InvalidCredentials)?;
+    let email = Email::parse_or_error(&request.email, |_| AuthAPIError::InvalidCredentials)?;
 
-    let login_attempt_id = LoginAttemptId::parse_or_error(&request.login_attempt_id, AuthAPIError::InvalidCredentials)?;
+    let login_attempt_id = LoginAttemptId::parse_or_error(&request.login_attempt_id, |_| AuthAPIError::InvalidCredentials)?;
 
-    let two_fa_code = TwoFACode::parse_or_error(&request.two_fa_code, AuthAPIError::InvalidCredentials)?;
+    let two_fa_code = TwoFACode::parse_or_error(&request.two_fa_code, |_| AuthAPIError::InvalidCredentials)?;
 
     let mut two_fa_code_store = state.two_fa_code_store.write().await;
     

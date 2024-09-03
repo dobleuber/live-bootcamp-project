@@ -30,9 +30,6 @@ impl TwoFACodeStore for HashmapTwoFACodeStore {
         &mut self,
         email: Email,
     ) -> Result<(), TwoFACodeStoreError> {
-        if !self.codes.contains_key(&email) {
-            return Err(TwoFACodeStoreError::UnexpectedError);
-        }
         self.codes.remove(&email);
         Ok(())
     }
@@ -86,13 +83,6 @@ mod tests {
         store.add_code(email.clone(), &login_attempt_id, code.clone()).await.unwrap();
 
         assert_eq!(store.remove_code(email.clone()).await, Ok(()));
-    }
-
-    #[tokio::test]
-    async fn should_fail_if_email_does_not_exist() {
-        let mut store = HashmapTwoFACodeStore::default();
-        let email = Email::parse("hi@test.com").unwrap();
-        assert_eq!(store.remove_code(email).await, Err(TwoFACodeStoreError::UnexpectedError));
     }
 
     #[tokio::test]

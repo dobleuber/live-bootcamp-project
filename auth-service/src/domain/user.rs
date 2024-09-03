@@ -1,7 +1,12 @@
-use super::email::Email;
-use super::password::Password;
+use color_eyre::eyre::Result;
 
-use crate::utils::parsable::Parsable;
+use crate::{
+    utils::parsable::Parsable,
+    domain::{
+        email::Email,
+        password::Password,
+    },
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct User {
@@ -11,7 +16,7 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(email: &str, password: &str, requires_2fa: bool) -> Result<Self, String> {
+    pub fn new(email: &str, password: &str, requires_2fa: bool) -> Result<Self> {
         let email = Email::parse(email)?;
 
         let password = Password::parse(password)?;

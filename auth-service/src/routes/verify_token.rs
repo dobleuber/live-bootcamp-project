@@ -5,7 +5,10 @@ use serde::Deserialize;
 use crate::utils::auth::validate_token;
 use crate::{AuthAPIError, AppState};
 
-pub async fn verify_token(State(state): State<AppState>, Json(request): Json<VerifyTokenRequest>
+#[tracing::instrument(name = "verify token", skip_all)]
+pub async fn verify_token(
+    State(state): State<AppState>,
+    Json(request): Json<VerifyTokenRequest>
 ) -> impl IntoResponse {
     let token = request.token;
     let banned_token_store = state.banned_token_store.clone();

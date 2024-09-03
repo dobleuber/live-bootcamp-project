@@ -22,6 +22,7 @@ impl RedisBannedTokenStore {
 
 #[async_trait::async_trait]
 impl BannedTokenStore for RedisBannedTokenStore {
+    #[tracing::instrument(name = "Store token", skip_all)]
     async fn store_token(&mut self, token: &str) -> bool {
         let key = get_key(token);
         self.conn.write()
@@ -30,6 +31,7 @@ impl BannedTokenStore for RedisBannedTokenStore {
             .unwrap_or(false)
     }
 
+    #[tracing::instrument(name = "is token banned", skip_all)]
     async fn is_token_banned(&self, token: &str) -> bool {
         let key = get_key(token);
 

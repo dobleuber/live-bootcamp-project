@@ -2,6 +2,8 @@ use redis::{Commands, Connection};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use color_eyre::eyre::{eyre, Context};
+
 
 use crate::{
     domain::{Email, IntoShared, LoginAttemptId, TwoFACode, TwoFACodeStore, TwoFACodeStoreError},
@@ -20,6 +22,7 @@ impl RedisTwoFACodeStore {
 
 #[async_trait::async_trait]
 impl TwoFACodeStore for RedisTwoFACodeStore {
+    #[tracing::instrument(name = "Add code", skip_all)]
     async fn add_code(
         &mut self,
         email: Email,
@@ -33,33 +36,33 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
         );
 
         let serialized_tuple = serde_json::to_string(&two_fa_tuple)
-            .map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
+            .wrap_err("Failet to serialize 2FA tuple")
+            .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
         self.conn
             .write()
             .await
             .set_ex(key, serialized_tuple, TEN_MINUTES_IN_SECONDS)
-            .map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
+            .wrap_err("Failed to set 2FA code in Redis")
+            .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
         Ok(())
     }
 
+    #[tracing::instrument(name = "Remove code", skip_all)]
     async fn remove_code(&mut self, email: Email) -> Result<(), TwoFACodeStoreError> {
         let key = get_key(&email);
         let mut conn = self.conn.write().await;
-
-        if conn
-            .exists(&key)
-            .map_err(|_| TwoFACodeStoreError::UnexpectedError)?
-        {
-            conn.del(&key)
-                .map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
-            Ok(())
-        } else {
-            Err(TwoFACodeStoreError::UnexpectedError)
-        }
+        
+        conn
+            .del(&key)
+            .wrap_err("Failed to delete 2FA code from rails")
+            .map_err(TwoFACodeStoreError::UnexpectedError)?;
+        Ok(())
+        
     }
 
+    #[tracing::instrument(name = "Get code", skip_all)]
     async fn get_code(
         &self,
         email: Email,
@@ -70,15 +73,17 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
             .write()
             .await
             .get(key)
+            .wrap_err("Failed to get the 2FA tupple")
             .map_err(|_| TwoFACodeStoreError::LoginAttemptIdNotFound)?;
 
         let two_fa_tuple: TwoFATuple = serde_json::from_str(&serialized_tuple)
-            .map_err(|_| TwoFACodeStoreError::UnexpectedError)?;
+            .wrap_err("Failed to deserialize the 2FA tupple")
+            .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
         let login_attempt_id =
-            LoginAttemptId::parse_or_error(&two_fa_tuple.0, |_| TwoFACodeStoreError::UnexpectedError)?;
+            LoginAttemptId::parse_or_error(&two_fa_tuple.0, |e| TwoFACodeStoreError::UnexpectedError(eyre!(e)))?;
         let two_fa_code =
-            TwoFACode::parse_or_error(&two_fa_tuple.1, |_| TwoFACodeStoreError::UnexpectedError)?;
+            TwoFACode::parse_or_error(&two_fa_tuple.1, |e| TwoFACodeStoreError::UnexpectedError(eyre!(e)))?;
 
         Ok((login_attempt_id, two_fa_code))
     }
@@ -155,17 +160,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(store.remove_code(email.clone()).await, Ok(()));
-    }
-
-    #[tokio::test]
-    async fn should_fail_if_email_does_not_exist() {
-        let conn: Arc<RwLock<Connection>> = get_redis_conn();
-        let mut store = RedisTwoFACodeStore::new(conn);
-        let email = Email::parse(&get_random_email()).unwrap();
-        assert_eq!(
-            store.remove_code(email).await,
-            Err(TwoFACodeStoreError::UnexpectedError)
-        );
     }
 
     #[tokio::test]

@@ -19,8 +19,7 @@ use redis::{RedisResult, Client};
 
 pub mod routes;
 use routes::{
-    // login, logout, verify_2fa, delete_account,
-    signup, verify_token, 
+    login, logout, verify_2fa, delete_account, signup, verify_token, 
 };
 use utils::tracing::{make_span_with_request_id, on_request, on_response};
 
@@ -104,11 +103,11 @@ impl Application {
         let router = Router::new()
             .nest_service("/", ServeDir::new("assets"))
             .route("/signup", post(signup))
-            // .route("/login", post(login))
-            // .route("/verify-2fa", post(verify_2fa))
-            // .route("/logout", post(logout))
+            .route("/login", post(login))
+            .route("/verify-2fa", post(verify_2fa))
+            .route("/logout", post(logout))
             .route("/verify-token", post(verify_token))
-            // .route("/delete-account", post(delete_account))
+            .route("/delete-account", post(delete_account))
             .with_state(app_state)
             .layer(cors)
             .layer(

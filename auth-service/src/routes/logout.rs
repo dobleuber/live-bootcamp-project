@@ -10,6 +10,7 @@ use crate::{
     AppState,
 };
 
+#[tracing::instrument(name = "logout", skip_all)]
 pub async fn logout(
     State(state): State<AppState>,
     jar: CookieJar,

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use super::{user::User, Email};
 use uuid::Uuid;
 use rand;
-use color_eyre::eyre::Report;
+use color_eyre::eyre::{eyre, Context, Report, Result};
 use thiserror::Error;
 
 use crate::utils::parsable::Parsable;
@@ -72,11 +72,22 @@ impl PartialEq for UserStoreError {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Error)]
 pub enum TwoFACodeStoreError {
+    #[error("Loging attempt ID not found")]
     LoginAttemptIdNotFound,
-    UnexpectedError,
+    #[error("Unexpected error")]
+    UnexpectedError(#[source] Report),
 }
+
+impl PartialEq for TwoFACodeStoreError {
+    fn eq(&self, other: &Self) -> bool {
+        matches!((self, other),
+            (Self::LoginAttemptIdNotFound, Self::LoginAttemptIdNotFound) | (Self::UnexpectedError(_), Self::UnexpectedError(_))
+        )
+    }
+}
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct LoginAttemptId(String);
@@ -85,11 +96,10 @@ pub struct LoginAttemptId(String);
 pub struct TwoFACode(String);
 
 impl Parsable for LoginAttemptId {
-    type Error = String;
-    fn parse(id: &str) -> Result<Self, String> {
-        Uuid::parse_str(id)
-            .map(|_| LoginAttemptId(id.to_string()))
-            .map_err(|_| "Invalid UUID".to_string())
+    fn parse(id: &str) -> Result<Self> {
+        let parse_id = Uuid::parse_str(id).wrap_err("Invalid login attempt")?;
+
+        Ok(Self(parse_id.to_string()))
     }
 }
 
@@ -106,19 +116,19 @@ impl AsRef<str> for LoginAttemptId {
 }
 
 impl Parsable for TwoFACode {
-    type Error = String;
-    fn parse(code: &str) -> Result<Self, String> {
+    fn parse(code: &str) -> Result<Self> {
         if code.len() != 6 {
-            return Err("Invalid code length".to_string());
+            return Err(eyre!("Invalid code length"));
         }
 
         if code.chars().any(|c| !c.is_ascii_digit()) {
-            return Err("Invalid code".to_string());
+            return Err(eyre!("Invalid code"));
         }
 
         Ok(TwoFACode(code.to_string()))
     }
 }
+
 
 impl Default for TwoFACode {
     fn default() -> Self {

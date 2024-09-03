@@ -2,8 +2,10 @@ use axum::{extract::State, http::StatusCode, response::IntoResponse};
 use axum_extra::extract::CookieJar;
 use serde::Deserialize;
 
-use crate::AppState;
+use color_eyre::eyre::Result;
+
 use crate::{
+    AppState,
     domain::AuthAPIError,
     utils::{
         auth::validate_token,
@@ -11,6 +13,7 @@ use crate::{
     },
 };
 
+#[tracing::instrument(name = "delete account", skip_all)]
 pub async fn delete_account(jar: CookieJar, State(state): State<AppState>) -> Result<(CookieJar, impl IntoResponse), AuthAPIError> {
     let banned_token_store = state.banned_token_store.clone();
     match jar.get(JWT_COOKIE_NAME) {
@@ -21,10 +24,10 @@ pub async fn delete_account(jar: CookieJar, State(state): State<AppState>) -> Re
                     let email = claims.sub;
                     let cookie_clone = cookie.clone().into_owned();
                     let mut user_store = state.user_store.write().await;
-                    if user_store.delete_user(&email).await.is_ok() {
-                        Ok((jar.remove(cookie_clone), StatusCode::OK.into_response()))
+                    if let Err(e) = user_store.delete_user(&email).await {
+                        Err(AuthAPIError::UnexpectedError(e.into()))
                     } else {
-                        Err(AuthAPIError::UnexpectedError)
+                        Ok((jar.remove(cookie_clone), StatusCode::OK.into_response()))
                     }
                 },
                 Err(_) => Err(AuthAPIError::InvalidToken),
