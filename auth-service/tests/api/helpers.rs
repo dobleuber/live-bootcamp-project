@@ -1,9 +1,12 @@
+use secrecy::{Secret, ExposeSecret};
 use sqlx::{
     mysql::{MySqlConnectOptions, MySqlConnection, MySqlPool, MySqlPoolOptions},
     Connection, Executor,
 };
 use tokio::sync::RwLock;
 use std::{str::FromStr, sync::Arc};
+use reqwest::cookie::Jar;
+use uuid::Uuid;
 
 use auth_service::{
     domain::IntoShared,
@@ -18,8 +21,6 @@ use auth_service::{
     utils::constants::{test, DATABASE_URL, DEFAULT_REDIS_HOSTNAME},
     AppState, Application, BannedTokenStoreType, TwoFACodeStoreType,
 };
-use reqwest::cookie::Jar;
-use uuid::Uuid;
 
 pub struct TestApp {
     pub address: String,
@@ -174,7 +175,7 @@ pub fn get_random_email() -> String {
 }
 
 async fn configure_my_sql() -> (MySqlPool, String) {
-    let mysql_conn_url = DATABASE_URL.to_owned();
+    let mysql_conn_url = DATABASE_URL.expose_secret().to_owned();
 
     // We are creating a new database for each test case, and we need to ensure each database has a unique name!
     let db_name = Uuid::new_v4().to_string();
@@ -184,7 +185,7 @@ async fn configure_my_sql() -> (MySqlPool, String) {
     let postgresql_conn_url_with_db = format!("{}/{}", mysql_conn_url, db_name);
 
     // Create a new connection pool and return it
-    (get_mysql_pool(&postgresql_conn_url_with_db)
+    (get_mysql_pool(Secret::new(postgresql_conn_url_with_db))
         .await
         .expect("Failed to create MySql connection pool!"), db_name)
 }
@@ -219,7 +220,7 @@ async fn configure_database(db_conn_string: &str, db_name: &str) {
 }
 
 async fn delete_database(db_name: &str) {
-    let db_conn_string: String = DATABASE_URL.to_string();
+    let db_conn_string: String = DATABASE_URL.expose_secret().to_owned();
 
     let connection_options = MySqlConnectOptions::from_str(&db_conn_string)
         .expect("Failed to parse the connection string");

@@ -1,8 +1,10 @@
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use chrono::Utc;
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Validation};
+use secrecy::ExposeSecret;
 use serde::{Deserialize, Serialize};
 use color_eyre::eyre::{eyre, Context, ContextCompat, Result};
+use secrecy::Secret;
 
 use crate::{
     BannedTokenStoreType,
@@ -51,20 +53,21 @@ fn generate_auth_token(email: &Email) -> Result<String> {
 
     let sub = email.as_ref().to_owned();
 
-    let claims = Claims { sub, exp };
+    let claims = Claims { sub: sub.expose_secret().to_owned(), exp };
 
     create_token(&claims)
 }
 
 #[tracing::instrument(name = "Validate token", skip_all)]
-pub async fn validate_token(banned_token_store: BannedTokenStoreType, token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+pub async fn validate_token(banned_token_store: BannedTokenStoreType, token: &Secret<String>) -> Result<Claims, jsonwebtoken::errors::Error> {
     let banned_token_store = banned_token_store.read().await;
-    if banned_token_store.is_token_banned(token).await {
+    if banned_token_store.is_token_banned(&token).await {
         return Err(jsonwebtoken::errors::Error::from(jsonwebtoken::errors::ErrorKind::InvalidToken));
     }
+    let token = token.expose_secret();
     decode::<Claims>(
         token,
-        &DecodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &DecodingKey::from_secret(JWT_SECRET.expose_secret().as_bytes()),
         &Validation::default(),
     )
     .map(|data| data.claims)
@@ -75,7 +78,7 @@ fn create_token(claims: &Claims) -> Result<String> {
     encode(
         &jsonwebtoken::Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET.as_bytes()),
+        &EncodingKey::from_secret(JWT_SECRET.expose_secret().as_bytes()),
     ).wrap_err("Failed to create token")
 }
 
@@ -128,6 +131,7 @@ mod tests {
         let banned_token_store = HashSetBannedTokenStore::default().into_shared();
         let email = Email::parse("test@example.com").unwrap();
         let token = generate_auth_token(&email).unwrap();
+        let token = Secret::new(token);
         let result = validate_token(banned_token_store, &token).await.unwrap();
         assert_eq!(result.sub, "test@example.com");
 
@@ -142,7 +146,7 @@ mod tests {
     #[tokio::test]
     async fn test_validate_token_with_invalid_token() {
         let banned_token_store = HashSetBannedTokenStore::default().into_shared();
-        let token = "invalid_token".to_owned();
+        let token = Secret::new("invalid_token".to_string());
         let result = validate_token(banned_token_store, &token).await;
         assert!(result.is_err());
     }
@@ -150,8 +154,8 @@ mod tests {
     #[tokio::test]
     async fn test_validate_token_with_banned_token() {
         let banned_token_store = HashSetBannedTokenStore::default().into_shared();
-        banned_token_store.write().await.store_token("banned_token").await;
-        let token = "banned_token".to_owned();
+        let token = Secret::new("banned_token".to_string());
+        banned_token_store.write().await.store_token(&token).await;
         let result = validate_token(banned_token_store, &token).await;
         assert!(result.is_err());
     }

@@ -1,13 +1,12 @@
 use color_eyre::eyre::{Error, Result};
 
-pub trait Parsable {
-    fn parse(s: &str) -> Result<Self>
+pub trait Parsable: Sized {
+    fn parse<S>(input: S) -> Result<Self>
     where
-        Self: Sized;
-
-    fn parse_or_error<E>(input: &str, map_err: impl FnOnce(Error) -> E) -> Result<Self, E>
+        S: AsRef<str>;
+    fn parse_or_error<E, S>(input: S, map_err: impl FnOnce(Error) -> E) -> Result<Self, E>
     where
-        Self: Sized,
+        S: AsRef<str>,
     {
         Self::parse(input).map_err(map_err)
     }

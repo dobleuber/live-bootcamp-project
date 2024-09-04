@@ -1,7 +1,7 @@
 use std::sync::Arc;
-
 use redis::{Commands, Connection};
 use tokio::sync::RwLock;
+use secrecy::{ExposeSecret, Secret};
 
 use crate::{
     domain::{BannedTokenStore, IntoShared},
@@ -23,8 +23,8 @@ impl RedisBannedTokenStore {
 #[async_trait::async_trait]
 impl BannedTokenStore for RedisBannedTokenStore {
     #[tracing::instrument(name = "Store token", skip_all)]
-    async fn store_token(&mut self, token: &str) -> bool {
-        let key = get_key(token);
+    async fn store_token(&mut self, token: &Secret<String>) -> bool {
+        let key = get_key(token.expose_secret());
         self.conn.write()
             .await
             .set_ex(key, true, TOKEN_TTL_SECONDS as u64)
@@ -32,8 +32,8 @@ impl BannedTokenStore for RedisBannedTokenStore {
     }
 
     #[tracing::instrument(name = "is token banned", skip_all)]
-    async fn is_token_banned(&self, token: &str) -> bool {
-        let key = get_key(token);
+    async fn is_token_banned(&self, token: &Secret<String>) -> bool {
+        let key = get_key(token.expose_secret());
 
         self.conn.write()
             .await
@@ -61,8 +61,9 @@ mod tests {
     async fn test_store_token() {
         let conn = configure_redis(DEFAULT_REDIS_HOSTNAME.to_string());
         let conn = Arc::new(RwLock::new(conn));
-        let mut banned_token_store = RedisBannedTokenStore::new(conn);    
-        assert!(banned_token_store.store_token("token").await);
+        let mut banned_token_store = RedisBannedTokenStore::new(conn);
+        let token = Secret::new("token".to_string());
+        assert!(banned_token_store.store_token(&token).await);
     }
 
     #[tokio::test]
@@ -70,7 +71,8 @@ mod tests {
         let conn = configure_redis(DEFAULT_REDIS_HOSTNAME.to_string());
         let conn = Arc::new(RwLock::new(conn));
         let mut banned_token_store = RedisBannedTokenStore::new(conn);
-        banned_token_store.store_token("token").await;
-        assert!(banned_token_store.is_token_banned("token").await);
+        let token = Secret::new("token".to_string());
+        banned_token_store.store_token(&token).await;
+        assert!(banned_token_store.is_token_banned(&token).await);
     }
 }

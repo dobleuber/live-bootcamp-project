@@ -1,6 +1,8 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use axum_extra::extract::{cookie, CookieJar};
 use serde::{Deserialize, Serialize};
+use secrecy::{ExposeSecret, Secret};
+
 use crate::{
     domain::{
         AuthAPIError,
@@ -29,18 +31,18 @@ pub async fn login(
         Err(_) => return Err(AuthAPIError::InvalidCredentials),
     };
 
-    let password = match Password::parse(&password) {
+    let password = match Password::parse(password.expose_secret()) {
         Ok(password) => password,
         Err(_) => return Err(AuthAPIError::InvalidCredentials),
     };
 
     let user_store = state.user_store.read().await;
 
-    if user_store.validate_user(email.as_ref(), password.as_ref()).await.is_err() {
+    if user_store.validate_user(email.as_ref().expose_secret(), password.as_ref().expose_secret()).await.is_err() {
         return Err(AuthAPIError::IncorrectCredentials);
     }
 
-    let user = user_store.get_user(email.as_ref()).await
+    let user = user_store.get_user(email.as_ref().expose_secret()).await
         .map_err(|_| AuthAPIError::IncorrectCredentials)?;
 
     match user.requires_2fa {
@@ -67,7 +69,7 @@ async fn handle_2fa(
         return Err(AuthAPIError::UnexpectedError(e.into()));
     }
 
-    let content = format!("Your 2FA code is: {}", two_fa_code.as_ref());
+    let content = format!("Your 2FA code is: {}", two_fa_code.as_ref().expose_secret());
 
     let email_client = state.email_client
         .read()
@@ -85,7 +87,7 @@ async fn handle_2fa(
         (StatusCode::PARTIAL_CONTENT,
         Json(LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
             message: "2FA required".to_string(),
-            login_attempt_id: login_attempt_id.as_ref().to_owned(),
+            login_attempt_id: login_attempt_id.as_ref().expose_secret().to_owned(),
         }))
     )))
 }
@@ -103,7 +105,7 @@ async fn handle_no_2fa(jar: cookie::CookieJar, email: Email) -> Result<(CookieJa
 #[derive(Deserialize, Debug)]
 pub struct LoginRequest {
     pub email: String,
-    pub password: String,
+    pub password: Secret<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]

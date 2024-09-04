@@ -1,4 +1,5 @@
 use color_eyre::eyre::Result;
+use secrecy::ExposeSecret;
 
 use crate::domain::{Email, EmailClient, IntoShared};
 
@@ -14,7 +15,7 @@ impl EmailClient for MockEmailClient {
     ) -> Result<()> {
         tracing::info!(
             "Sending email to {} with subject: {} and content: {}",
-            recipient.as_ref(),
+            recipient.as_ref().expose_secret(),
             subject,
             content
         );

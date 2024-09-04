@@ -9,6 +9,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{MySqlPool, mysql::MySqlPoolOptions};
+use secrecy::{ExposeSecret, Secret};
 
 use domain::{AuthAPIError, BannedTokenStore, EmailClient, TwoFACodeStore, UserStore};
 
@@ -76,10 +77,10 @@ impl IntoResponse for AuthAPIError {
     }
 }
 
-pub async fn get_mysql_pool(url: &str) -> Result<MySqlPool, sqlx::Error> {
+pub async fn get_mysql_pool(url: Secret<String>) -> Result<MySqlPool, sqlx::Error> {
     MySqlPoolOptions::new()
         .max_connections(5)
-        .connect(url)
+        .connect(url.expose_secret())
         .await
 }
 
@@ -89,7 +90,7 @@ pub struct Application {
 }
 
 impl Application {
-    pub async fn build(app_state: AppState,address: &str) -> Result<Self, Box<dyn Error>> {
+    pub async fn build(app_state: AppState, address: &str) -> Result<Self, Box<dyn Error>> {
         let allowed_origins = [
             "http://localhost".parse()?,
             "http://dobleuber.lat".parse()?,

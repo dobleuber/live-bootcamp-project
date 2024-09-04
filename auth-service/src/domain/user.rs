@@ -1,4 +1,5 @@
 use color_eyre::eyre::Result;
+use secrecy::{ExposeSecret, Secret};
 
 use crate::{
     utils::parsable::Parsable,
@@ -8,7 +9,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct User {
     pub email: Email,
     pub password: Password,
@@ -16,10 +17,10 @@ pub struct User {
 }
 
 impl User {
-    pub fn new(email: &str, password: &str, requires_2fa: bool) -> Result<Self> {
-        let email = Email::parse(email)?;
+    pub fn new(email: Secret<String>, password: Secret<String>, requires_2fa: bool) -> Result<Self> {
+        let email = Email::parse(email.expose_secret())?;
 
-        let password = Password::parse(password)?;
+        let password = Password::parse(password.expose_secret())?;
         Ok(Self {
             email,
             password,

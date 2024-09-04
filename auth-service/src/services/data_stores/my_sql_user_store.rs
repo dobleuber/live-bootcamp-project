@@ -1,4 +1,5 @@
 use color_eyre::eyre::{eyre, Result};
+use secrecy::Secret;
 
 use argon2::{
     password_hash::SaltString,
@@ -11,6 +12,7 @@ use argon2::{
     Version,
 };
 
+use secrecy::ExposeSecret;
 use sqlx::MySqlPool;
 
 use crate::{
@@ -36,13 +38,13 @@ impl MySqlUserStore {
 impl UserStore for MySqlUserStore {
     #[tracing::instrument(name="Adding user to Database", skip_all)]
     async fn add_user(&mut self, user: User) -> Result<(), UserStoreError>{
-        let password_hash = compute_password_hash(user.password.as_ref().to_string())
+        let password_hash = compute_password_hash(user.password.as_ref().to_owned())
             .await
             .map_err(UserStoreError::UnexpectedError)?;
 
         sqlx::query("Insert INTO users (email, password_hash, requires_2fa) VALUES (?, ?, ?)")
-            .bind(user.email.as_ref())
-            .bind(password_hash)
+            .bind(user.email.as_ref().expose_secret())
+            .bind(password_hash.expose_secret())
             .bind(user.requires_2fa)
             .execute(&self.pool)
             .await
@@ -73,7 +75,7 @@ impl UserStore for MySqlUserStore {
     async fn validate_user(&self, email: &str, password: &str) -> Result<(), UserStoreError> {
         let user = self.get_user(email).await;
         let is_valid_password = verify_password_hash(
-            user?.password.as_ref().to_string(),
+            user?.password.as_ref().expose_secret().to_owned(),
             password.to_string()
         ).await;
 
@@ -114,7 +116,7 @@ async fn verify_password_hash(
 }
 
 #[tracing::instrument(name="Computing password hash", skip_all)]
-async fn compute_password_hash(password: String) -> Result<String> {
+async fn compute_password_hash(password: Secret<String>) -> Result<Secret<String>> {
     let current_span: tracing::Span = tracing::Span::current();
 
     let result = tokio::task::spawn_blocking(move || {
@@ -125,10 +127,10 @@ async fn compute_password_hash(password: String) -> Result<String> {
                 Version::V0x13,
                 Params::new(15000, 2, 1, None)?,
             )
-            .hash_password(password.as_bytes(), &salt)?
+            .hash_password(password.expose_secret().as_bytes(), &salt)?
             .to_string();
         
-            Ok(password_hash)
+            Ok(Secret::new(password_hash))
         })
     }).await;
 

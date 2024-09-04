@@ -5,6 +5,7 @@ use uuid::Uuid;
 use rand;
 use color_eyre::eyre::{eyre, Context, Report, Result};
 use thiserror::Error;
+use secrecy::{ExposeSecret, Secret};
 
 use crate::utils::parsable::Parsable;
 
@@ -30,8 +31,8 @@ pub trait UserStore {
 
 #[async_trait::async_trait]
 pub trait BannedTokenStore  {
-    async fn store_token(&mut self, token: &str) -> bool;
-    async fn is_token_banned(&self, token: &str) -> bool;
+    async fn store_token(&mut self, token: &Secret<String>) -> bool;
+    async fn is_token_banned(&self, token: &Secret<String>) -> bool;
 }
 
 pub trait IntoShared {
@@ -89,34 +90,47 @@ impl PartialEq for TwoFACodeStoreError {
 }
 
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct LoginAttemptId(String);
+#[derive(Debug, Clone)]
+pub struct LoginAttemptId(Secret<String>);
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct TwoFACode(String);
+#[derive(Clone, Debug)]
+pub struct TwoFACode(Secret<String>);
 
 impl Parsable for LoginAttemptId {
-    fn parse(id: &str) -> Result<Self> {
-        let parse_id = Uuid::parse_str(id).wrap_err("Invalid login attempt")?;
+    fn parse<S>(id: S) -> Result<Self>
+    where 
+        S: AsRef<str>
+    {
+        let parse_id = Uuid::parse_str(id.as_ref()).wrap_err("Invalid login attempt")?;
 
-        Ok(Self(parse_id.to_string()))
+        Ok(Self(Secret::new(parse_id.to_string())))
     }
 }
 
 impl Default for LoginAttemptId {
     fn default() -> Self {
-        LoginAttemptId(Uuid::new_v4().to_string())
+        LoginAttemptId(Secret::new(Uuid::new_v4().to_string()))
     }
 }
 
-impl AsRef<str> for LoginAttemptId {
-    fn as_ref(&self) -> &str {
+impl AsRef<Secret<String>> for LoginAttemptId {
+    fn as_ref(&self) -> &Secret<String> {
         &self.0
     }
 }
 
+impl PartialEq for LoginAttemptId {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
+
 impl Parsable for TwoFACode {
-    fn parse(code: &str) -> Result<Self> {
+    fn parse<S>(code: S) -> Result<Self>
+    where 
+        S: AsRef<str>
+    {
+        let code = code.as_ref();
         if code.len() != 6 {
             return Err(eyre!("Invalid code length"));
         }
@@ -125,7 +139,7 @@ impl Parsable for TwoFACode {
             return Err(eyre!("Invalid code"));
         }
 
-        Ok(TwoFACode(code.to_string()))
+        Ok(TwoFACode(Secret::new(code.to_string())))
     }
 }
 
@@ -137,13 +151,19 @@ impl Default for TwoFACode {
             .map(|n| std::char::from_digit(n as u32, 10).unwrap())
             .collect();
 
-        TwoFACode(code)
+        TwoFACode(Secret::new(code))
     }
 }
 
-impl AsRef<str> for TwoFACode {
-    fn as_ref(&self) -> &str {
+impl AsRef<Secret<String>> for TwoFACode {
+    fn as_ref(&self) -> &Secret<String> {
         &self.0
+    }
+}
+
+impl PartialEq for TwoFACode {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
     }
 }
 

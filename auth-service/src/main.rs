@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
-
 use sqlx::mysql::MySqlPool;
+use secrecy::{Secret, ExposeSecret};
 
 use auth_service::{
     configure_redis,
@@ -41,9 +41,9 @@ async fn main() {
 }
 
 async fn configure_database() -> MySqlPool {
-    let connection_string = format!("{}/{}", DATABASE_URL.as_str(), DATABASE_NAME.as_str());
+    let connection_string = format!("{}/{}", DATABASE_URL.expose_secret(), DATABASE_NAME.as_str());
     tracing::info!("Connection string: {}", &connection_string);
-    let db_pool = get_mysql_pool(&connection_string)
+    let db_pool = get_mysql_pool(Secret::new(connection_string))
         .await
         .expect("Failed to connect to MySQL");
 

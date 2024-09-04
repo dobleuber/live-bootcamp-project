@@ -8,6 +8,7 @@ use auth_service::{
     },
     ErrorResponse,
 };
+use secrecy::ExposeSecret;
 
 #[tokio::test]
 async fn should_return_422_if_malformed_credentials() {
@@ -191,7 +192,7 @@ async fn should_return_206_if_valid_credentials_and_2fa_enabled() {
         json_body,
         LoginResponse::TwoFactorAuth(TwoFactorAuthResponse {
             message: "2FA required".to_string(),
-            login_attempt_id: login_attempt_id.as_ref().to_owned(),
+            login_attempt_id: login_attempt_id.as_ref().expose_secret().to_owned(),
         })
     );
 

@@ -1,24 +1,47 @@
 use color_eyre::eyre::{eyre, Result};
 use validator::ValidateEmail;
+use secrecy::{Secret, ExposeSecret};
+use std::hash::Hash;
+
 use crate::utils::parsable::Parsable;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Email(String);
+#[derive(Debug, Clone)]
+pub struct Email(Secret<String>);
 
 impl Parsable for Email {
-    fn parse(input: &str) -> Result<Email> {
+    fn parse<S>(input: S) -> Result<Email>
+    where 
+        S: AsRef<str>
+    {
+        let input = input.as_ref();
         if input.validate_email() {
-            Ok(Email(input.to_string()))
+            Ok(Email(Secret::new(input.to_string())))
         } else {
             Err(eyre!("Invalid email address"))
         }
     }
 }
 
-impl AsRef<str> for Email {
-    fn as_ref(&self) -> &str {
+impl AsRef<Secret<String>> for Email {
+    fn as_ref(&self) -> &Secret<String> {
         &self.0
     }     
+}
+
+impl Eq for Email {}
+
+// New!
+impl PartialEq for Email {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.expose_secret() == other.0.expose_secret()
+    }
+}
+
+// New!
+impl Hash for Email {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.0.expose_secret().hash(state);
+    }
 }
 
 #[cfg(test)]
@@ -41,6 +64,6 @@ mod tests {
     fn test_as_ref() {
         let email_text = "hey@test.com";
         let email = Email::parse(email_text).unwrap();
-        assert_eq!(email.as_ref(), email_text);
+        assert_eq!(email.as_ref().expose_secret(), email_text);
     }
 }
