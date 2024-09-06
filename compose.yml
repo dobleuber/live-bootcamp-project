@@ -30,6 +30,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       DATABASE_URL: "mysql://root:${DATABASE_PASSWORD}@db:3306"
       DATABASE_NAME: bootcamp
+      MAIL_AUTH_TOKEN: ${MAIL_AUTH_TOKEN}
     expose:
       - "8080"
     depends_on:

@@ -121,6 +121,7 @@ jobs:
           export JWT_SECRET=${{ secrets.JWT_SECRET }}
           export AUTH_SERVICE_IP=${{ vars.DROPLET_IP }}
           export DATABASE_PASSWORD=${{ secrets.DATABASE_PASSWORD }}
+          export MAIL_AUTH_TOKEN=${{ secrets.MAIL_AUTH_TOKEN }}
           
           # Create dirs if they don't exist
           mkdir -p certbot-etc letsencrypt
