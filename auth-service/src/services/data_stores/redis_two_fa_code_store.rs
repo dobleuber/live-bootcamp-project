@@ -23,7 +23,7 @@ impl RedisTwoFACodeStore {
 
 #[async_trait::async_trait]
 impl TwoFACodeStore for RedisTwoFACodeStore {
-    #[tracing::instrument(name = "Add code", skip_all)]
+    #[tracing::instrument(name = "Add code", skip(self))]
     async fn add_code(
         &mut self,
         email: Email,
@@ -43,20 +43,20 @@ impl TwoFACodeStore for RedisTwoFACodeStore {
         self.conn
             .write()
             .await
-            .set_ex(key, serialized_tuple, TEN_MINUTES_IN_SECONDS)
+            .set_ex::<String, String, ()>(key, serialized_tuple, TEN_MINUTES_IN_SECONDS)
             .wrap_err("Failed to set 2FA code in Redis")
             .map_err(TwoFACodeStoreError::UnexpectedError)?;
 
         Ok(())
     }
 
-    #[tracing::instrument(name = "Remove code", skip_all)]
+    #[tracing::instrument(name = "Remove code", skip(self))]
     async fn remove_code(&mut self, email: Email) -> Result<(), TwoFACodeStoreError> {
         let key = get_key(&email);
         let mut conn = self.conn.write().await;
         
         conn
-            .del(&key)
+            .del::<String, ()>(key)
             .wrap_err("Failed to delete 2FA code from rails")
             .map_err(TwoFACodeStoreError::UnexpectedError)?;
         Ok(())

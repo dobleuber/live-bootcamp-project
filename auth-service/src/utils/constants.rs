@@ -48,7 +48,7 @@ pub mod prod {
 
         pub const BASE_URL: &str = "https://api.mailgun.net/v3/sandbox57e9d90a8cc34de6b96f21e84108edbd.mailgun.org/messages";
         // If you created your own Postmark account, make sure to use your email address!
-        pub const SENDER: &str = "dobleuber@gmail.com";
+        pub const SENDER: &str = "postmaster@sandbox57e9d90a8cc34de6b96f21e84108edbd.mailgun.org";
         pub const TIMEOUT: Duration = std::time::Duration::from_secs(10);
     }
 }

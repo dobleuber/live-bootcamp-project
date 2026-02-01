@@ -4,7 +4,6 @@ use axum::{
     http::{Method, StatusCode},
     response::{IntoResponse, Response},
     routing::post,
-    serve::Serve,
     Json, Router
 };
 use serde::{Deserialize, Serialize};
@@ -85,7 +84,8 @@ pub async fn get_mysql_pool(url: Secret<String>) -> Result<MySqlPool, sqlx::Erro
 }
 
 pub struct Application {
-    server: Serve<Router, Router>,
+    listener: tokio::net::TcpListener,
+    router: Router,
     pub address: String,
 }
 
@@ -120,14 +120,13 @@ impl Application {
 
         let listener = tokio::net::TcpListener::bind(address).await?;
         let address = listener.local_addr()?.to_string();
-        let server = axum::serve(listener, router);
 
-        Ok(Self { server, address })
+        Ok(Self { listener, router, address })
     }
 
     pub async fn run(self) -> Result<(), std::io::Error> {
         tracing::info!("listening on {}", &self.address);
-        self.server.await
+        axum::serve(self.listener, self.router).await
     }
 }
 
