@@ -17,8 +17,8 @@ pub enum UserStoreError {
     UserNotFound,
     #[error("Invalid credentials")]
     InvalidCredentials,
-    #[error("Unexpected error")]
-    UnexpectedError(#[source] Report),
+    #[error("Unexpected error: {0}")]
+    UnexpectedError(Report),
 }
 
 #[async_trait::async_trait]
@@ -77,8 +77,8 @@ impl PartialEq for UserStoreError {
 pub enum TwoFACodeStoreError {
     #[error("Loging attempt ID not found")]
     LoginAttemptIdNotFound,
-    #[error("Unexpected error")]
-    UnexpectedError(#[source] Report),
+    #[error("Unexpected error: {0}")]
+    UnexpectedError(Report),
 }
 
 impl PartialEq for TwoFACodeStoreError {

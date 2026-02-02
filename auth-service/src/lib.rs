@@ -102,7 +102,7 @@ impl Application {
             .allow_origin(allowed_origins);
 
         let router = Router::new()
-            .nest_service("/", ServeDir::new("assets"))
+            .fallback_service(ServeDir::new("assets"))
             .route("/signup", post(signup))
             .route("/login", post(login))
             .route("/verify-2fa", post(verify_2fa))

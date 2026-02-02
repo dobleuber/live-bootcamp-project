@@ -61,7 +61,7 @@ fn generate_auth_token(email: &Email) -> Result<String> {
 #[tracing::instrument(name = "Validate token", skip_all)]
 pub async fn validate_token(banned_token_store: BannedTokenStoreType, token: &Secret<String>) -> Result<Claims, jsonwebtoken::errors::Error> {
     let banned_token_store = banned_token_store.read().await;
-    if banned_token_store.is_token_banned(&token).await {
+    if banned_token_store.is_token_banned(token).await {
         return Err(jsonwebtoken::errors::Error::from(jsonwebtoken::errors::ErrorKind::InvalidToken));
     }
     let token = token.expose_secret();
